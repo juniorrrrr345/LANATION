@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import SimpleTextEditor from './SimpleTextEditor';
 
 interface PageContent {
   slug: string;
@@ -208,13 +207,38 @@ export default function PagesManager() {
 
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            Contenu de la page
+            Contenu (Markdown supporté)
           </label>
-          <SimpleTextEditor
+          <div className="text-xs text-gray-400 mb-2">
+            Utilisez # pour les titres, ** pour le gras, * pour l'italique, - pour les listes
+          </div>
+          <textarea
             value={pageContent[activeTab].content}
-            onChange={(value) => updateContent('content', value)}
-            placeholder="Tapez votre contenu ici... Utilisez les boutons ci-dessus pour insérer des éléments."
+            onChange={(e) => updateContent('content', e.target.value)}
+            rows={15}
+            className="w-full px-4 py-3 bg-gray-800 border border-white/20 rounded-lg text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-white resize-y"
+            placeholder="Contenu de la page..."
           />
+        </div>
+
+        {/* Aide Markdown */}
+        <div className="bg-gray-800/50 rounded-lg p-4 text-xs text-gray-400">
+          <p className="font-semibold mb-2">Syntaxe Markdown :</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p>• # Titre principal</p>
+              <p>• ## Sous-titre</p>
+              <p>• ### Section</p>
+              <p>• **texte en gras**</p>
+              <p>• *texte en italique*</p>
+            </div>
+            <div>
+              <p>• - élément de liste</p>
+              <p>• 1. liste numérotée</p>
+              <p>• `code inline`</p>
+              <p>• Ligne vide = nouveau paragraphe</p>
+            </div>
+          </div>
         </div>
 
         {/* Bouton de sauvegarde */}
