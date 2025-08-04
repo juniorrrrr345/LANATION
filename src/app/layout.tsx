@@ -1,23 +1,20 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import CachePreloader from '@/components/CachePreloader'
 import GlobalBackgroundProvider from '@/components/GlobalBackgroundProvider'
+import CachePreloader from '@/components/CachePreloader'
+import AdminFloatingButton from '@/components/AdminFloatingButton'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'LANATIONDULAIT - Boutique en ligne',
-  description: 'LANATIONDULAIT - Votre boutique en ligne. Produits de qualité et livraison rapide.',
-  viewport: 'width=device-width, initial-scale=1, maximum-scale=5',
-  themeColor: '#000000',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'black-translucent',
-          title: 'LANATIONDULAIT'
-  },
-  formatDetection: {
-    telephone: false
+  title: 'LANATIONDULAIT - Boutique',
+  description: 'Découvrez notre sélection de produits',
+  keywords: 'boutique, produits, shopping',
+  openGraph: {
+    title: 'LANATIONDULAIT - Boutique',
+    description: 'Découvrez notre sélection de produits',
+    type: 'website',
   }
 }
 
@@ -27,56 +24,62 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="fr" suppressHydrationWarning>
+    <html lang="fr" className="dark" suppressHydrationWarning>
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0, viewport-fit=cover" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="format-detection" content="telephone=no" />
-        <style
-          dangerouslySetInnerHTML={{
-            __html: `
-              /* Background par défaut pour éviter l'écran noir */
-              html, body {
-                background-color: #1a1a1a !important;
-                background-image: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%) !important;
-                min-height: 100vh;
-              }
-              .main-container {
-                min-height: 100vh;
-                background-color: transparent;
-              }
-              .global-overlay {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background-color: rgba(0, 0, 0, 0.3);
-                backdrop-filter: blur(5px);
-                -webkit-backdrop-filter: blur(5px);
-                z-index: 1;
-              }
-              .content-layer {
-                position: relative;
-                z-index: 2;
-                min-height: 100vh;
-              }
-            `
-          }}
-        />
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              // Appliquer le background immédiatement depuis localStorage
+              // Fond noir immédiat
+              document.documentElement.style.backgroundColor = 'black';
+              document.body.style.backgroundColor = 'black';
+            `
+          }}
+        />
+        <style>
+          {`
+            html, body {
+              background-color: black !important;
+              min-height: 100vh;
+              min-height: -webkit-fill-available;
+              overscroll-behavior: none;
+              -webkit-overflow-scrolling: touch;
+            }
+            
+            /* Empêcher le bounce effect sur iOS */
+            body {
+              position: fixed;
+              width: 100%;
+              height: 100%;
+              overflow: hidden;
+            }
+            
+            /* Container principal scrollable */
+            .main-container {
+              position: fixed;
+              top: 0;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              overflow-y: auto;
+              -webkit-overflow-scrolling: touch;
+              background-color: black;
+            }
+          `}
+        </style>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
               (function() {
                 try {
-                  const settings = localStorage.getItem('shopSettings');
+                  const settings = localStorage.getItem('adminSettings');
                   if (settings) {
                     const parsed = JSON.parse(settings);
                     if (parsed.backgroundImage) {
                       const style = document.createElement('style');
-                      style.textContent = \`
+                      style.innerHTML = \`
                         html, body, .main-container {
                           background-image: url(\${parsed.backgroundImage}) !important;
                           background-size: cover !important;
@@ -106,6 +109,7 @@ export default function RootLayout({
         <GlobalBackgroundProvider />
         <CachePreloader />
         {children}
+        <AdminFloatingButton />
       </body>
     </html>
   )
