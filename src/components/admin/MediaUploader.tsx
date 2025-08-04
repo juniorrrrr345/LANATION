@@ -70,9 +70,20 @@ export default function MediaUploader({
       console.log('📡 Réponse serveur:', response.status);
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('❌ Erreur serveur:', errorData);
-        throw new Error(errorData.error || `Erreur HTTP ${response.status}`);
+        let errorMessage = `Erreur HTTP ${response.status}`;
+        try {
+          const errorData = await response.json();
+          console.error('❌ Erreur serveur:', errorData);
+          errorMessage = errorData.error || errorMessage;
+        } catch (parseError) {
+          console.error('❌ Erreur parsing réponse:', parseError);
+          if (response.status === 413) {
+            errorMessage = 'Fichier trop volumineux';
+          } else if (response.status === 400) {
+            errorMessage = 'Format de fichier non supporté. Essayez Cloudinary pour ce type de vidéo.';
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       const result = await response.json();
@@ -91,6 +102,8 @@ export default function MediaUploader({
         setError(errorMessage);
       } else if (errorMessage.includes('Type de fichier non supporté')) {
         setError('Format de fichier non supporté. Utilisez JPG, PNG, WebP, HEIC (iPhone), MP4, MOV ou WebM.');
+      } else if (errorMessage.includes('string did not match') || errorMessage.includes('expected pattern') || errorMessage.includes('Invalid')) {
+        setError('⚠️ Format vidéo non compatible (vidéo iPhone?). Utilisez Cloudinary (bouton bleu) pour ce fichier.');
       } else {
         setError(`Erreur: ${errorMessage}. Essayez l'upload Cloudinary pour plus de fiabilité.`);
       }

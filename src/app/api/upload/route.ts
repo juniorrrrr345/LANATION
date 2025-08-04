@@ -27,31 +27,37 @@ export async function POST(request: NextRequest) {
     let fileType = file.type;
     const fileName = file.name.toLowerCase();
     
-    // Gestion spéciale pour les fichiers iPhone
-    if (!fileType || fileType === 'application/octet-stream' || fileType === '') {
-      console.log('⚠️ Type MIME manquant, détection par extension...');
+    // Gestion spéciale pour les fichiers iPhone et détection robuste
+    if (!fileType || fileType === 'application/octet-stream' || fileType === '' || fileType === 'video/x-m4v') {
+      console.log('⚠️ Type MIME manquant ou non standard:', fileType, '- détection par extension...');
       
-      if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) {
-        fileType = 'image/jpeg';
-      } else if (fileName.endsWith('.png')) {
-        fileType = 'image/png';
-      } else if (fileName.endsWith('.webp')) {
-        fileType = 'image/webp';
-      } else if (fileName.endsWith('.heic') || fileName.endsWith('.heif')) {
-        fileType = 'image/heic';
-      } else if (fileName.endsWith('.mp4')) {
-        fileType = 'video/mp4';
-      } else if (fileName.endsWith('.mov')) {
-        fileType = 'video/quicktime';
-      } else if (fileName.endsWith('.3gp')) {
-        fileType = 'video/3gpp';
-      } else if (fileName.endsWith('.webm')) {
-        fileType = 'video/webm';
-      } else if (fileName.endsWith('.avi')) {
-        fileType = 'video/x-msvideo';
-      }
+      const ext = fileName.split('.').pop()?.toLowerCase() || '';
       
-      console.log('📋 Type détecté:', fileType);
+      const mimeMap: { [key: string]: string } = {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'webp': 'image/webp',
+        'heic': 'image/heic',
+        'heif': 'image/heif',
+        'mp4': 'video/mp4',
+        'mov': 'video/quicktime',
+        'm4v': 'video/mp4', // Format vidéo iPhone
+        '3gp': 'video/3gpp',
+        '3g2': 'video/3gpp2',
+        'webm': 'video/webm',
+        'avi': 'video/x-msvideo'
+      };
+      
+      fileType = mimeMap[ext] || fileType || 'application/octet-stream';
+      
+      console.log('📋 Extension:', ext, '→ Type final:', fileType);
+    }
+    
+    // Normaliser les types MIME non standard
+    if (fileType === 'video/x-m4v' || fileType === 'video/x-quicktime') {
+      fileType = 'video/mp4';
+      console.log('🔄 Type normalisé en video/mp4');
     }
 
     // Vérifier le type de fichier - Support formats mobiles
@@ -112,7 +118,29 @@ export async function POST(request: NextRequest) {
     
     // Pour les fichiers HEIC/HEIF, on utilise le type MIME image/jpeg pour la compatibilité
     const dataUrlType = (fileType === 'image/heic' || fileType === 'image/heif') ? 'image/jpeg' : fileType;
-    const dataUrl = `data:${dataUrlType};base64,${base64}`;
+    
+    // Validation du base64
+    if (!base64 || base64.length === 0) {
+      console.error('❌ Erreur: base64 vide');
+      return NextResponse.json({ 
+        error: 'Erreur lors de la conversion du fichier. Essayez avec un format différent ou utilisez Cloudinary.' 
+      }, { status: 400 });
+    }
+    
+    // Construction du data URL avec validation
+    let dataUrl;
+    try {
+      dataUrl = `data:${dataUrlType};base64,${base64}`;
+      // Vérifier que le data URL est valide
+      if (!dataUrl.startsWith('data:') || !dataUrl.includes(';base64,')) {
+        throw new Error('Data URL invalide');
+      }
+    } catch (error) {
+      console.error('❌ Erreur création data URL:', error);
+      return NextResponse.json({ 
+        error: 'Format de fichier non supporté. Utilisez Cloudinary pour ce type de fichier.' 
+      }, { status: 400 });
+    }
     
     console.log('📏 Taille base64:', {
       originalSize: file.size,
