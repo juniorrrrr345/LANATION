@@ -30,20 +30,21 @@ export async function POST(request: NextRequest) {
       size: Math.round(file.size / 1024 / 1024 * 100) / 100 + 'MB'
     });
 
-    // Validation simplifiée - accepter tous les fichiers avec extensions valides
+    // Validation iPhone-friendly - accepter plus de types
     const validExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.mp4', '.mov', '.avi', '.3gp', '.webm', '.mkv'];
     const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
-    const hasValidExtension = validExtensions.includes(fileExtension);
+    const hasValidExtension = validExtensions.includes(fileExtension) || file.type.startsWith('image/') || file.type.startsWith('video/');
     
     if (!hasValidExtension) {
+      console.log('⚠️ Type de fichier non reconnu:', { name: file.name, type: file.type, extension: fileExtension });
       return NextResponse.json({ 
-        error: `Extension non supportée: ${fileExtension}. Extensions acceptées: ${validExtensions.join(', ')}` 
+        error: `Type non supporté: ${file.type} (${fileExtension}). Extensions acceptées: ${validExtensions.join(', ')}` 
       }, { status: 400 });
     }
     
-    // Déterminer si c'est une vidéo basé sur l'extension
+    // Déterminer si c'est une vidéo basé sur l'extension ou le type MIME
     const videoExtensions = ['.mp4', '.mov', '.avi', '.3gp', '.webm', '.mkv'];
-    const isVideo = videoExtensions.includes(fileExtension);
+    const isVideo = videoExtensions.includes(fileExtension) || file.type.startsWith('video/');
 
     const maxSize = isVideo ? 500 * 1024 * 1024 : 10 * 1024 * 1024; // 500MB vidéo, 10MB image
     

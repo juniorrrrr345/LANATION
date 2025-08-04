@@ -20,7 +20,14 @@ export default function CloudinaryUploader({
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const isVideo = file.type.startsWith('video/');
+    console.log('📱 Fichier sélectionné sur iPhone:', {
+      name: file.name,
+      type: file.type,
+      size: Math.round(file.size / 1024 / 1024 * 100) / 100 + 'MB'
+    });
+
+    // Sur iPhone, les types peuvent être différents
+    const isVideo = file.type.startsWith('video/') || file.name.toLowerCase().match(/\.(mp4|mov|avi|3gp|webm|mkv)$/);
     const maxSize = isVideo ? 500 * 1024 * 1024 : 10 * 1024 * 1024; // 500MB vidéo, 10MB image
     
     if (file.size > maxSize) {
@@ -86,7 +93,8 @@ export default function CloudinaryUploader({
                           <input
                 type="file"
                 className="hidden"
-                accept="image/*,video/*,.jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.avi,.3gp,.webm,.mkv"
+                accept="image/*,video/*,.jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.avi,.3gp,.webm,.mkv,image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/x-msvideo"
+                capture="environment"
                 onChange={handleFileSelect}
                 disabled={uploading}
               />
