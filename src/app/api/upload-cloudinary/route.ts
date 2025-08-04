@@ -50,12 +50,15 @@ export async function POST(request: NextRequest) {
     const uploadResult = await new Promise((resolve, reject) => {
       // Créer un FormData pour l'upload
       const uploadFormData = new FormData();
-      uploadFormData.append('file', new Blob([buffer], { type: file.type }));
+      
+      // Ajouter le fichier
+      const blob = new Blob([buffer], { type: file.type });
+      uploadFormData.append('file', blob, file.name);
+      
+      // Ajouter les paramètres du preset - TRÈS IMPORTANT
       uploadFormData.append('upload_preset', 'lntdl_media');
-      uploadFormData.append('overwrite', 'false');
-      uploadFormData.append('unique_filename', 'true');
-      uploadFormData.append('use_filename_as_display_name', 'true');
-      uploadFormData.append('use_asset_folder_as_public_id_prefix', 'false');
+      
+      console.log('📤 Upload vers Cloudinary avec preset:', 'lntdl_media');
 
       // Upload direct vers Cloudinary
       fetch(`https://api.cloudinary.com/v1_1/dwez3etsh/${isVideo ? 'video' : 'image'}/upload`, {
@@ -63,8 +66,12 @@ export async function POST(request: NextRequest) {
         body: uploadFormData
       })
       .then(response => {
+        console.log('📥 Réponse Cloudinary:', response.status, response.statusText);
         if (!response.ok) {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          return response.text().then(errorText => {
+            console.error('❌ Erreur HTTP:', errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+          });
         }
         return response.json();
       })
