@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Upload vers Cloudinary avec preset unsigned
-    const uploadResult = await new Promise((resolve, reject) => {
+    const uploadResult = await new Promise(async (resolve, reject) => {
       // Créer un FormData pour l'upload
       const uploadFormData = new FormData();
       
