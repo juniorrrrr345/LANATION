@@ -136,15 +136,25 @@ export async function POST(request: NextRequest) {
         method: 'POST',
         body: uploadFormData
       })
-      .then(response => {
+      .then(async response => {
         console.log('📥 Réponse Cloudinary:', response.status, response.statusText);
         if (!response.ok) {
-          return response.text().then(errorText => {
-            console.error('❌ Erreur HTTP:', errorText);
-            throw new Error(`HTTP ${response.status}: ${errorText}`);
-          });
+          const errorText = await response.text();
+          console.error('❌ Erreur HTTP:', errorText);
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
         }
-        return response.json();
+        
+        // Essayer de parser la réponse JSON
+        const responseText = await response.text();
+        console.log('📄 Réponse brute:', responseText.substring(0, 200));
+        
+        try {
+          return JSON.parse(responseText);
+        } catch (parseError) {
+          console.error('❌ Erreur parsing JSON:', parseError);
+          console.error('Réponse complète:', responseText);
+          throw new Error('Réponse Cloudinary invalide');
+        }
       })
       .then(result => {
         if (result.error) {

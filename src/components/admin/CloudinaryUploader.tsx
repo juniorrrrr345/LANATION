@@ -70,13 +70,25 @@ export default function CloudinaryUploader({
       console.log('📡 Réponse serveur:', response.status);
 
       if (!response.ok) {
-        const errorData = await response.json();
-        console.error('❌ Erreur serveur:', errorData);
-        throw new Error(errorData.error || errorData.details || `Erreur HTTP ${response.status}`);
+        let errorMessage = `Erreur HTTP ${response.status}`;
+        try {
+          const errorData = await response.json();
+          console.error('❌ Erreur serveur:', errorData);
+          errorMessage = errorData.error || errorData.details || errorMessage;
+        } catch (e) {
+          console.error('❌ Impossible de parser l\'erreur');
+        }
+        throw new Error(errorMessage);
       }
 
-      const result = await response.json();
-      console.log('✅ Upload Cloudinary réussi:', result);
+      let result;
+      try {
+        result = await response.json();
+        console.log('✅ Upload Cloudinary réussi:', result);
+      } catch (parseError) {
+        console.error('❌ Erreur parsing réponse:', parseError);
+        throw new Error('Réponse serveur invalide. Réessayez ou contactez le support.');
+      }
       
       setProgress('Upload terminé !');
       setTimeout(() => setProgress(''), 2000);
