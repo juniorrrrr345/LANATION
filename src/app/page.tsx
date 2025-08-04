@@ -224,21 +224,19 @@ export default function HomePage() {
         <div className="content-layer">
           <div className="min-h-screen flex items-center justify-center p-4">
             <div className="text-center max-w-lg mx-auto">
-              {/* Icône de chargement */}
+              {/* Titre de la boutique */}
               <div className="mb-8">
-                <div className="relative w-32 h-32 mx-auto">
-                  <div className="absolute inset-0 rounded-full border-4 border-white/20"></div>
-                  <div className="absolute inset-0 rounded-full border-4 border-t-white border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-5xl">⚙️</span>
-                  </div>
-                </div>
+                <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-white mb-4 tracking-wider">
+                  <span className="block">LANATION</span>
+                  <span className="block">DU LAIT</span>
+                </h1>
+                <div className="w-20 h-1 bg-white mx-auto rounded-full"></div>
               </div>
               
               {/* Message de chargement */}
               <div className="text-center">
-                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
-                  Chargement Du Menu.. ⚙️
+                <h2 className="text-xl sm:text-2xl font-medium text-white mb-4">
+                  Chargement Du Menu..
                 </h2>
                 
                 {/* Barre de progression simple */}
