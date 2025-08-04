@@ -37,10 +37,10 @@ export default function CloudinaryUploader({
     // Vérifier si c'est un fichier HEIC/HEIF
     const isHeic = fileExtension === '.heic' || fileExtension === '.heif';
     
-    const maxSize = isVideo ? 1024 * 1024 * 1024 : 10 * 1024 * 1024; // 1GB vidéo, 10MB image
+    const maxSize = isVideo ? 2 * 1024 * 1024 * 1024 : 50 * 1024 * 1024; // 2GB vidéo (haute qualité et longue durée), 50MB image
     
     if (file.size > maxSize) {
-      setError(`Fichier trop volumineux: ${Math.round(file.size / 1024 / 1024)}MB. Maximum ${isVideo ? '1GB' : '10MB'}`);
+              setError(`Fichier trop volumineux: ${Math.round(file.size / 1024 / 1024)}MB. Maximum ${isVideo ? '2GB' : '50MB'}`);
       return;
     }
 
@@ -145,7 +145,7 @@ export default function CloudinaryUploader({
           </label>
           
           <span className="text-sm text-gray-400">
-            Images (10MB) & Vidéos (1GB) - HEIC iPhone supporté
+            Images (50MB) & Vidéos (2GB) - HEIC iPhone supporté, Haute qualité et longue durée
           </span>
         </div>
 
