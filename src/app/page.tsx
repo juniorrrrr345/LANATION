@@ -235,28 +235,37 @@ export default function HomePage() {
                 </div>
               </div>
               
-              {/* Titre avec effet néon et ombre */}
-              <h1 className="text-5xl sm:text-7xl font-black mb-4 text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.8)]">
-                LANATIONDULAIT
-              </h1>
-              
-              <p className="text-2xl text-white mb-8 font-semibold drop-shadow-lg">
-                Préparation en cours...
-              </p>
-              
-              {/* Barre de chargement noir et blanc */}
-              <div className="w-80 max-w-full mx-auto mb-8">
-                <div className="h-4 bg-white/20 rounded-full overflow-hidden border border-white/40 shadow-inner">
-                  <div className="h-full bg-white rounded-full shadow-lg animate-loading-bar"></div>
-                </div>
-                <div className="mt-2 text-sm text-white font-medium drop-shadow-md">Chargement...</div>
+              {/* Titre principal bien centré avec effet moderne */}
+              <div className="text-center mb-12">
+                <h1 className="text-6xl sm:text-8xl lg:text-9xl font-black text-white mb-6 tracking-wider leading-none">
+                  <span className="block transform hover:scale-105 transition-transform duration-300">
+                    LANATION
+                  </span>
+                  <span className="block transform hover:scale-105 transition-transform duration-300" style={{ animationDelay: '0.2s' }}>
+                    DU LAIT
+                  </span>
+                </h1>
+                
+                <div className="w-24 h-1 bg-white mx-auto mb-8 rounded-full shadow-lg"></div>
+                
+                <p className="text-xl sm:text-2xl text-white/90 font-medium drop-shadow-lg mb-12">
+                  Votre boutique en ligne de confiance
+                </p>
               </div>
               
-              {/* Animation de points noir et blanc */}
-              <div className="flex justify-center gap-3 mb-8">
-                <div className="w-3 h-3 bg-white rounded-full animate-bounce shadow-lg shadow-white/50" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-3 h-3 bg-white rounded-full animate-bounce shadow-lg shadow-white/50" style={{ animationDelay: '200ms' }}></div>
-                <div className="w-3 h-3 bg-white rounded-full animate-bounce shadow-lg shadow-white/50" style={{ animationDelay: '400ms' }}></div>
+              {/* Barre de chargement moderne */}
+              <div className="w-96 max-w-full mx-auto mb-12">
+                <div className="h-3 bg-white/10 rounded-full overflow-hidden border border-white/20 shadow-inner">
+                  <div className="h-full bg-gradient-to-r from-white to-white/80 rounded-full shadow-lg animate-loading-bar"></div>
+                </div>
+                <div className="mt-4 text-sm text-white/80 font-medium text-center">Chargement en cours...</div>
+              </div>
+              
+              {/* Animation de points modernes */}
+              <div className="flex justify-center gap-4 mb-12">
+                <div className="w-4 h-4 bg-white rounded-full animate-pulse shadow-lg shadow-white/30" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-4 h-4 bg-white rounded-full animate-pulse shadow-lg shadow-white/30" style={{ animationDelay: '300ms' }}></div>
+                <div className="w-4 h-4 bg-white rounded-full animate-pulse shadow-lg shadow-white/30" style={{ animationDelay: '600ms' }}></div>
               </div>
               
               {/* Footer */}

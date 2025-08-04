@@ -21,10 +21,10 @@ export default function CloudinaryUploader({
     if (!file) return;
 
     const isVideo = file.type.startsWith('video/');
-    const maxSize = isVideo ? 100 * 1024 * 1024 : 10 * 1024 * 1024; // 100MB vidéo, 10MB image
+    const maxSize = isVideo ? 500 * 1024 * 1024 : 10 * 1024 * 1024; // 500MB vidéo, 10MB image
     
     if (file.size > maxSize) {
-      setError(`Fichier trop volumineux: ${Math.round(file.size / 1024 / 1024)}MB. Maximum ${isVideo ? '100MB' : '10MB'}`);
+      setError(`Fichier trop volumineux: ${Math.round(file.size / 1024 / 1024)}MB. Maximum ${isVideo ? '500MB' : '10MB'}`);
       return;
     }
 
@@ -106,7 +106,7 @@ export default function CloudinaryUploader({
           </label>
           
           <span className="text-sm text-gray-400">
-            Images (10MB) & Vidéos (100MB) - Hébergement cloud
+            Images (10MB) & Vidéos (500MB) - Hébergement cloud
           </span>
         </div>
 

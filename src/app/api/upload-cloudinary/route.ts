@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import cloudinary from '@/lib/cloudinary';
 
-// Configuration Next.js 14
-export const maxDuration = 60; // 60 secondes pour les uploads vidéo
+// Configuration Next.js 14 - Augmenté pour les vidéos plus longues
+export const maxDuration = 300; // 5 minutes pour les uploads vidéo
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
@@ -48,11 +48,11 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
     }
-    const maxSize = isVideo ? 100 * 1024 * 1024 : 10 * 1024 * 1024; // 100MB vidéo, 10MB image
+    const maxSize = isVideo ? 500 * 1024 * 1024 : 10 * 1024 * 1024; // 500MB vidéo, 10MB image
     
     if (file.size > maxSize) {
       return NextResponse.json({ 
-        error: `Fichier trop volumineux: ${Math.round(file.size / 1024 / 1024)}MB. Maximum ${isVideo ? '100MB' : '10MB'}` 
+        error: `Fichier trop volumineux: ${Math.round(file.size / 1024 / 1024)}MB. Maximum ${isVideo ? '500MB' : '10MB'}` 
       }, { status: 400 });
     }
 
@@ -121,9 +121,9 @@ export async function POST(request: NextRequest) {
 
       uploadStream.end(buffer);
     }),
-    // Timeout de 50 secondes
+    // Timeout de 4 minutes pour les vidéos longues
     new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Upload timeout - 50 secondes dépassées')), 50000)
+      setTimeout(() => reject(new Error('Upload timeout - 4 minutes dépassées')), 240000)
     )
   ]);
 
