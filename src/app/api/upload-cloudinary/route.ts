@@ -20,9 +20,44 @@ export async function POST(request: NextRequest) {
       size: Math.round(file.size / 1024 / 1024 * 100) / 100 + 'MB'
     });
 
+    // Déterminer le type réel du fichier basé sur l'extension si le type MIME est vide ou incorrect
+    let fileType = file.type;
+    const fileName = file.name.toLowerCase();
+    
+    // Gestion spéciale pour les fichiers iPhone
+    if (!fileType || fileType === 'application/octet-stream' || fileType === '') {
+      console.log('⚠️ Type MIME manquant, détection par extension...');
+      
+      if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) {
+        fileType = 'image/jpeg';
+      } else if (fileName.endsWith('.png')) {
+        fileType = 'image/png';
+      } else if (fileName.endsWith('.webp')) {
+        fileType = 'image/webp';
+      } else if (fileName.endsWith('.gif')) {
+        fileType = 'image/gif';
+      } else if (fileName.endsWith('.heic') || fileName.endsWith('.heif')) {
+        fileType = 'image/heic';
+      } else if (fileName.endsWith('.mp4')) {
+        fileType = 'video/mp4';
+      } else if (fileName.endsWith('.mov')) {
+        fileType = 'video/quicktime';
+      } else if (fileName.endsWith('.3gp') || fileName.endsWith('.3g2')) {
+        fileType = 'video/3gpp';
+      } else if (fileName.endsWith('.webm')) {
+        fileType = 'video/webm';
+      } else if (fileName.endsWith('.avi')) {
+        fileType = 'video/x-msvideo';
+      } else if (fileName.endsWith('.mkv')) {
+        fileType = 'video/x-matroska';
+      }
+      
+      console.log('📋 Type détecté:', fileType);
+    }
+
     // Accepter TOUS les fichiers avec extensions valides
-    const validExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.mp4', '.mov', '.avi', '.3gp', '.webm', '.mkv'];
-    const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    const validExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.heic', '.heif', '.mp4', '.mov', '.avi', '.3gp', '.3g2', '.webm', '.mkv'];
+    const fileExtension = fileName.substring(fileName.lastIndexOf('.'));
     
     if (!validExtensions.includes(fileExtension)) {
       return NextResponse.json({ 
@@ -31,8 +66,8 @@ export async function POST(request: NextRequest) {
     }
     
     // Déterminer si c'est une vidéo
-    const videoExtensions = ['.mp4', '.mov', '.avi', '.3gp', '.webm', '.mkv'];
-    const isVideo = videoExtensions.includes(fileExtension);
+    const videoExtensions = ['.mp4', '.mov', '.avi', '.3gp', '.3g2', '.webm', '.mkv'];
+    const isVideo = videoExtensions.includes(fileExtension) || fileType.startsWith('video/');
 
     const maxSize = isVideo ? 500 * 1024 * 1024 : 10 * 1024 * 1024;
     
@@ -46,19 +81,32 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
+    // Pour les fichiers HEIC/HEIF, on doit utiliser un type MIME supporté par Cloudinary
+    let uploadType = fileType;
+    if (fileType === 'image/heic' || fileType === 'image/heif' || fileExtension === '.heic' || fileExtension === '.heif') {
+      // Cloudinary peut gérer HEIC mais on doit utiliser le bon type
+      uploadType = 'image/jpeg'; // Cloudinary convertira automatiquement
+      console.log('🔄 Format HEIC/HEIF détecté - Cloudinary va convertir en JPEG');
+    }
+
     // Upload vers Cloudinary avec preset unsigned
     const uploadResult = await new Promise((resolve, reject) => {
       // Créer un FormData pour l'upload
       const uploadFormData = new FormData();
       
-      // Ajouter le fichier
-      const blob = new Blob([buffer], { type: file.type });
+      // Ajouter le fichier avec le bon type MIME
+      const blob = new Blob([buffer], { type: uploadType });
       uploadFormData.append('file', blob, file.name);
       
       // Ajouter les paramètres du preset - TRÈS IMPORTANT
       uploadFormData.append('upload_preset', 'lntdl_media');
       
-      console.log('📤 Upload vers Cloudinary avec preset:', 'lntdl_media');
+      // Pour les fichiers HEIC, demander une conversion automatique
+      if (fileExtension === '.heic' || fileExtension === '.heif') {
+        uploadFormData.append('format', 'jpg');
+      }
+      
+      console.log('📤 Upload vers Cloudinary avec preset:', 'lntdl_media', 'Type:', uploadType);
 
       // Upload direct vers Cloudinary
       fetch(`https://api.cloudinary.com/v1_1/dwez3etsh/${isVideo ? 'video' : 'image'}/upload`, {
@@ -97,7 +145,8 @@ export async function POST(request: NextRequest) {
       public_id: result.public_id,
       type: isVideo ? 'video' : 'image',
       filename: file.name,
-      size: file.size
+      size: file.size,
+      format: result.format // Format final après conversion
     });
 
   } catch (error) {

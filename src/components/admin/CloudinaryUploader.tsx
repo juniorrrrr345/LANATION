@@ -9,7 +9,7 @@ interface CloudinaryUploaderProps {
 
 export default function CloudinaryUploader({ 
   onMediaSelected, 
-  acceptedTypes = "image/*,video/*,.jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.avi,.3gp,.webm,.mkv",
+  acceptedTypes = "image/*,video/*,.jpg,.jpeg,.png,.webp,.gif,.heic,.heif,.mp4,.mov,.avi,.3gp,.3g2,.webm,.mkv",
   className = ""
 }: CloudinaryUploaderProps) {
   const [uploading, setUploading] = useState(false);
@@ -20,14 +20,23 @@ export default function CloudinaryUploader({
     const file = event.target.files?.[0];
     if (!file) return;
 
-    console.log('📱 Fichier sélectionné sur iPhone:', {
+    const fileName = file.name.toLowerCase();
+    const fileExtension = fileName.substring(fileName.lastIndexOf('.'));
+    
+    console.log('📱 Fichier sélectionné:', {
       name: file.name,
-      type: file.type,
-      size: Math.round(file.size / 1024 / 1024 * 100) / 100 + 'MB'
+      type: file.type || 'Type non détecté',
+      size: Math.round(file.size / 1024 / 1024 * 100) / 100 + 'MB',
+      extension: fileExtension
     });
 
-    // Sur iPhone, les types peuvent être différents
-    const isVideo = file.type.startsWith('video/') || file.name.toLowerCase().match(/\.(mp4|mov|avi|3gp|webm|mkv)$/);
+    // Sur iPhone, les types peuvent être différents ou manquants
+    const isVideo = file.type.startsWith('video/') || 
+                   ['.mp4', '.mov', '.avi', '.3gp', '.3g2', '.webm', '.mkv'].includes(fileExtension);
+    
+    // Vérifier si c'est un fichier HEIC/HEIF
+    const isHeic = fileExtension === '.heic' || fileExtension === '.heif';
+    
     const maxSize = isVideo ? 500 * 1024 * 1024 : 10 * 1024 * 1024; // 500MB vidéo, 10MB image
     
     if (file.size > maxSize) {
@@ -40,13 +49,15 @@ export default function CloudinaryUploader({
     setProgress('Préparation upload...');
 
     try {
-      console.log('🚀 Début upload Cloudinary:', {
-        name: file.name,
-        type: file.type,
-        size: Math.round(file.size / 1024 / 1024 * 100) / 100 + 'MB'
-      });
+      // Avertissement spécial pour HEIC
+      if (isHeic) {
+        setProgress('Conversion HEIC vers JPEG...');
+        console.log('🔄 Format HEIC détecté - Cloudinary va convertir automatiquement');
+      }
       
-      setProgress('Upload vers Cloudinary...');
+      console.log('🚀 Début upload Cloudinary');
+      
+      setProgress(isVideo ? 'Upload vidéo en cours...' : 'Upload image en cours...');
       
       const formData = new FormData();
       formData.append('file', file);
@@ -56,9 +67,12 @@ export default function CloudinaryUploader({
         body: formData,
       });
 
+      console.log('📡 Réponse serveur:', response.status);
+
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || `Erreur HTTP ${response.status}`);
+        console.error('❌ Erreur serveur:', errorData);
+        throw new Error(errorData.error || errorData.details || `Erreur HTTP ${response.status}`);
       }
 
       const result = await response.json();
@@ -67,6 +81,11 @@ export default function CloudinaryUploader({
       setProgress('Upload terminé !');
       setTimeout(() => setProgress(''), 2000);
       
+      // Si c'était un HEIC, informer que la conversion a réussi
+      if (isHeic && result.format === 'jpg') {
+        console.log('✅ HEIC converti en JPEG avec succès');
+      }
+      
       onMediaSelected(result.url, result.type);
       
       // Reset l'input
@@ -74,7 +93,20 @@ export default function CloudinaryUploader({
       
     } catch (error) {
       console.error('❌ Erreur upload Cloudinary:', error);
-      setError(error instanceof Error ? error.message : 'Erreur upload inconnue');
+      const errorMessage = error instanceof Error ? error.message : 'Erreur upload inconnue';
+      
+      // Messages d'erreur plus clairs
+      if (errorMessage.includes('Extension non supportée')) {
+        setError('Format non supporté. Formats acceptés: JPG, PNG, WebP, GIF, HEIC (iPhone), MP4, MOV, AVI, WebM');
+      } else if (errorMessage.includes('trop volumineux')) {
+        setError(errorMessage);
+      } else if (errorMessage.includes('preset')) {
+        setError('Erreur de configuration Cloudinary. Contactez l\'administrateur.');
+      } else {
+        setError(`Erreur: ${errorMessage}`);
+      }
+      
+      setProgress('');
     } finally {
       setUploading(false);
     }
@@ -90,13 +122,14 @@ export default function CloudinaryUploader({
             text-white cursor-pointer transition-all duration-300 shadow-lg
             ${uploading ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-xl'}
           `}>
-                          <input
-                type="file"
-                className="hidden"
-                accept="image/*,video/*,.jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.avi,.3gp,.webm,.mkv,image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/x-msvideo"
-                onChange={handleFileSelect}
-                disabled={uploading}
-              />
+            <input
+              type="file"
+              className="hidden"
+              accept="image/*,video/*,.jpg,.jpeg,.png,.webp,.gif,.heic,.heif,.mp4,.mov,.avi,.3gp,.3g2,.webm,.mkv"
+              onChange={handleFileSelect}
+              disabled={uploading}
+              capture="environment" // Améliore la compatibilité mobile
+            />
             {uploading ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
@@ -113,12 +146,12 @@ export default function CloudinaryUploader({
           </label>
           
           <span className="text-sm text-gray-400">
-            Images (10MB) & Vidéos (500MB) - Preset: lntdl_media
+            Images (10MB) & Vidéos (500MB) - HEIC iPhone supporté
           </span>
         </div>
 
         {progress && (
-          <div className="text-sm text-blue-400 bg-blue-900/20 px-3 py-2 rounded border border-blue-500">
+          <div className="text-sm text-blue-400 bg-blue-900/20 px-3 py-2 rounded border border-blue-500 animate-pulse">
             {progress}
           </div>
         )}

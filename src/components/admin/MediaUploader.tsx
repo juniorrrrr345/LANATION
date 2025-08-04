@@ -10,7 +10,7 @@ interface MediaUploaderProps {
 
 export default function MediaUploader({ 
   onMediaSelected, 
-  acceptedTypes = "image/*,video/*,.mov,.avi,.3gp",
+  acceptedTypes = "image/*,video/*,.jpg,.jpeg,.png,.webp,.heic,.heif,.mp4,.mov,.avi,.3gp,.3g2,.webm",
   maxSize = 10, // Limite par défaut réduite
   className = ""
 }: MediaUploaderProps) {
@@ -21,20 +21,32 @@ export default function MediaUploader({
     const file = event.target.files?.[0];
     if (!file) return;
 
+    // Déterminer le type de fichier par l'extension si le type MIME est manquant
+    const fileName = file.name.toLowerCase();
+    const isVideo = file.type.startsWith('video/') || 
+                   ['.mp4', '.mov', '.avi', '.3gp', '.3g2', '.webm'].some(ext => fileName.endsWith(ext));
+    
+    // Vérifier si c'est un fichier HEIC/HEIF
+    const isHeic = fileName.endsWith('.heic') || fileName.endsWith('.heif');
+    
     // Vérifier la taille selon le type de fichier
-    const isVideo = file.type.startsWith('video/');
     const actualMaxSize = isVideo ? 10 : 5; // 10MB pour vidéos, 5MB pour images
     const maxBytes = actualMaxSize * 1024 * 1024;
     
     if (file.size > maxBytes) {
-      setError(`Fichier trop volumineux: ${Math.round(file.size / 1024 / 1024)}MB. Maximum ${actualMaxSize}MB pour ${isVideo ? 'les vidéos' : 'les images'}.`);
+      setError(`Fichier trop volumineux: ${Math.round(file.size / 1024 / 1024)}MB. Maximum ${actualMaxSize}MB pour ${isVideo ? 'les vidéos' : 'les images'}. Utilisez l'upload Cloudinary pour des fichiers plus gros.`);
       return;
     }
     
     // Vérification supplémentaire pour éviter les erreurs MongoDB
     if (isVideo && file.size > 8 * 1024 * 1024) {
-      setError(`Vidéo trop volumineuse (${Math.round(file.size / 1024 / 1024)}MB). Utilisez max 8MB pour éviter les erreurs de base de données.`);
+      setError(`Vidéo trop volumineuse (${Math.round(file.size / 1024 / 1024)}MB). Utilisez l'upload Cloudinary pour les vidéos > 8MB.`);
       return;
+    }
+    
+    // Avertissement pour les fichiers HEIC
+    if (isHeic) {
+      console.log('⚠️ Format HEIC détecté - sera traité comme JPEG');
     }
 
     setUploading(true);
@@ -43,8 +55,9 @@ export default function MediaUploader({
     try {
       console.log('🚀 Début upload client:', {
         name: file.name,
-        type: file.type,
-        size: file.size
+        type: file.type || 'Type non détecté',
+        size: Math.round(file.size / 1024 / 1024 * 100) / 100 + 'MB',
+        extension: fileName.substring(fileName.lastIndexOf('.'))
       });
       
       const formData = new FormData();
@@ -72,7 +85,16 @@ export default function MediaUploader({
       
     } catch (error) {
       console.error('❌ Erreur upload client:', error);
-      setError(error instanceof Error ? error.message : 'Erreur upload inconnue');
+      const errorMessage = error instanceof Error ? error.message : 'Erreur upload inconnue';
+      
+      // Messages d'erreur plus clairs pour l'utilisateur
+      if (errorMessage.includes('trop volumineux')) {
+        setError(errorMessage);
+      } else if (errorMessage.includes('Type de fichier non supporté')) {
+        setError('Format de fichier non supporté. Utilisez JPG, PNG, WebP, HEIC (iPhone), MP4, MOV ou WebM.');
+      } else {
+        setError(`Erreur: ${errorMessage}. Essayez l'upload Cloudinary pour plus de fiabilité.`);
+      }
     } finally {
       setUploading(false);
     }
@@ -92,6 +114,7 @@ export default function MediaUploader({
             accept={acceptedTypes}
             onChange={handleFileSelect}
             disabled={uploading}
+            capture="environment" // Améliore la compatibilité mobile
           />
           {uploading ? (
             <>
@@ -110,10 +133,10 @@ export default function MediaUploader({
         
         <span className="text-sm text-gray-400">
           {acceptedTypes.includes('video') && acceptedTypes.includes('image') 
-            ? 'Images (5MB) & Vidéos (10MB) - MP4, MOV, WebM'
+            ? 'Images (5MB) & Vidéos (10MB) - Formats iPhone supportés'
             : acceptedTypes.includes('video')
             ? 'Vidéos (max 10MB) - MP4, MOV, WebM'
-            : 'Images (max 5MB) - JPG, PNG, WebP'
+            : 'Images (max 5MB) - JPG, PNG, WebP, HEIC'
           }
         </span>
       </div>

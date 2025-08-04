@@ -23,28 +23,73 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Aucun fichier fourni' }, { status: 400 });
     }
 
+    // Déterminer le type réel du fichier basé sur l'extension si le type MIME est vide ou incorrect
+    let fileType = file.type;
+    const fileName = file.name.toLowerCase();
+    
+    // Gestion spéciale pour les fichiers iPhone
+    if (!fileType || fileType === 'application/octet-stream' || fileType === '') {
+      console.log('⚠️ Type MIME manquant, détection par extension...');
+      
+      if (fileName.endsWith('.jpg') || fileName.endsWith('.jpeg')) {
+        fileType = 'image/jpeg';
+      } else if (fileName.endsWith('.png')) {
+        fileType = 'image/png';
+      } else if (fileName.endsWith('.webp')) {
+        fileType = 'image/webp';
+      } else if (fileName.endsWith('.heic') || fileName.endsWith('.heif')) {
+        fileType = 'image/heic';
+      } else if (fileName.endsWith('.mp4')) {
+        fileType = 'video/mp4';
+      } else if (fileName.endsWith('.mov')) {
+        fileType = 'video/quicktime';
+      } else if (fileName.endsWith('.3gp')) {
+        fileType = 'video/3gpp';
+      } else if (fileName.endsWith('.webm')) {
+        fileType = 'video/webm';
+      } else if (fileName.endsWith('.avi')) {
+        fileType = 'video/x-msvideo';
+      }
+      
+      console.log('📋 Type détecté:', fileType);
+    }
+
     // Vérifier le type de fichier - Support formats mobiles
     const allowedTypes = [
       'image/jpeg', 
       'image/jpg', 
       'image/png', 
       'image/webp',
+      'image/heic',      // Format iPhone
+      'image/heif',      // Format iPhone
       'video/mp4', 
       'video/webm',
       'video/quicktime', // .mov (iPhone/Mac)
       'video/x-msvideo', // .avi
       'video/mpeg',      // .mpeg
-      'video/3gpp'       // .3gp (Android)
+      'video/3gpp',      // .3gp (Android)
+      'video/3gpp2'      // .3g2 (Android)
     ];
-    if (!allowedTypes.includes(file.type)) {
-      console.log('❌ Type non supporté:', file.type);
+    
+    // Vérifier aussi par extension si le type MIME n'est pas dans la liste
+    const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif', '.mp4', '.mov', '.avi', '.3gp', '.3g2', '.webm', '.mpeg'];
+    const fileExtension = fileName.substring(fileName.lastIndexOf('.'));
+    
+    if (!allowedTypes.includes(fileType) && !allowedExtensions.includes(fileExtension)) {
+      console.log('❌ Type non supporté:', fileType, 'Extension:', fileExtension);
       return NextResponse.json({ 
-        error: `Type de fichier non supporté: ${file.type}. Utilisez: JPG, PNG, WebP, MP4, WebM, MOV, AVI` 
+        error: `Type de fichier non supporté: ${fileType || fileExtension}. Utilisez: JPG, PNG, WebP, HEIC, MP4, WebM, MOV, AVI` 
       }, { status: 400 });
     }
 
+    // Pour les fichiers HEIC/HEIF, on les traite comme des images mais on avertit l'utilisateur
+    if (fileType === 'image/heic' || fileType === 'image/heif' || fileName.endsWith('.heic') || fileName.endsWith('.heif')) {
+      console.log('⚠️ Format HEIC/HEIF détecté - conversion recommandée');
+      // On continue le traitement mais on pourrait retourner un avertissement
+    }
+
     // Limites plus strictes pour éviter les erreurs MongoDB
-    const isVideo = file.type.startsWith('video/');
+    const isVideo = fileType.startsWith('video/') || ['.mp4', '.mov', '.avi', '.3gp', '.webm'].some(ext => fileName.endsWith(ext));
     // MongoDB a une limite de 16MB par document
     // Une vidéo en base64 fait ~33% plus gros que le fichier original
     const maxSize = isVideo ? 10 * 1024 * 1024 : 5 * 1024 * 1024; // 10MB pour vidéos, 5MB pour images
@@ -53,7 +98,7 @@ export async function POST(request: NextRequest) {
     if (file.size > maxSize) {
       console.log('❌ Fichier trop gros:', file.size, 'max:', maxSize);
       return NextResponse.json({ 
-        error: `Fichier trop volumineux: ${Math.round(file.size / 1024 / 1024)}MB. Maximum ${maxSizeText} pour ${isVideo ? 'les vidéos' : 'les images'}` 
+        error: `Fichier trop volumineux: ${Math.round(file.size / 1024 / 1024)}MB. Maximum ${maxSizeText} pour ${isVideo ? 'les vidéos' : 'les images'}. Utilisez l'upload Cloudinary pour des fichiers plus gros.` 
       }, { status: 400 });
     }
 
@@ -63,7 +108,10 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     const base64 = buffer.toString('base64');
-    const dataUrl = `data:${file.type};base64,${base64}`;
+    
+    // Pour les fichiers HEIC/HEIF, on utilise le type MIME image/jpeg pour la compatibilité
+    const dataUrlType = (fileType === 'image/heic' || fileType === 'image/heif') ? 'image/jpeg' : fileType;
+    const dataUrl = `data:${dataUrlType};base64,${base64}`;
     
     console.log('📏 Taille base64:', {
       originalSize: file.size,
@@ -77,7 +125,7 @@ export async function POST(request: NextRequest) {
     if (dataUrl.length > maxBase64Size) {
       console.log('❌ Data URL trop volumineux:', dataUrl.length);
       return NextResponse.json({ 
-        error: `Fichier trop volumineux après conversion (${Math.round(dataUrl.length / 1024 / 1024)}MB). Essayez un fichier plus petit.` 
+        error: `Fichier trop volumineux après conversion (${Math.round(dataUrl.length / 1024 / 1024)}MB). Essayez un fichier plus petit ou utilisez l'upload Cloudinary.` 
       }, { status: 400 });
     }
     
@@ -91,7 +139,8 @@ export async function POST(request: NextRequest) {
       const mediaDoc = {
         filename: file.name,
         originalName: file.name,
-        type: file.type.startsWith('image/') ? 'image' : 'video',
+        type: isVideo ? 'video' : 'image',
+        mimeType: fileType, // Garder le type MIME original
         size: file.size,
         dataUrl: dataUrl,
         createdAt: new Date(),
@@ -105,7 +154,7 @@ export async function POST(request: NextRequest) {
       const response = {
         url: dataUrl, // On retourne directement le data URL
         filename: file.name,
-        type: file.type.startsWith('image/') ? 'image' : 'video',
+        type: isVideo ? 'video' : 'image',
         size: file.size,
         id: result.insertedId
       };
@@ -129,7 +178,7 @@ export async function POST(request: NextRequest) {
       if (errorMessage.includes('size') || errorMessage.includes('too large')) {
         console.error('❌ Document MongoDB trop volumineux');
         return NextResponse.json({ 
-          error: 'Fichier trop volumineux pour la base de données. Réduisez la taille du fichier.' 
+          error: 'Fichier trop volumineux pour la base de données. Utilisez l\'upload Cloudinary pour des fichiers plus gros.' 
         }, { status: 400 });
       }
       
@@ -137,7 +186,7 @@ export async function POST(request: NextRequest) {
       const response = {
         url: dataUrl,
         filename: file.name,
-        type: file.type.startsWith('image/') ? 'image' : 'video',
+        type: isVideo ? 'video' : 'image',
         size: file.size
       };
       
