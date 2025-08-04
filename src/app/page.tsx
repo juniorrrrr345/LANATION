@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '../components/Header';
-// Redéploiement forcé - Nouveau chargement JBEL INDUSTRY
+// Redéploiement forcé - Nouveau chargement LANATION SHOP
 import CategoryFilter from '../components/CategoryFilter';
 import ProductCard, { Product } from '../components/ProductCard';
 import ProductDetail from '../components/ProductDetail';
@@ -237,7 +237,7 @@ export default function HomePage() {
               
               {/* Titre avec effet néon et ombre */}
               <h1 className="text-5xl sm:text-7xl font-black mb-4 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 text-transparent bg-clip-text animate-pulse drop-shadow-[0_0_30px_rgba(255,255,255,0.5)]">
-                JBEL INDUSTRY
+                LANATION SHOP
               </h1>
               
               <p className="text-2xl text-white mb-8 font-semibold drop-shadow-lg">
@@ -261,7 +261,7 @@ export default function HomePage() {
               
               {/* Footer */}
               <div className="text-white text-sm font-medium drop-shadow-md">
-                <p>© 2025 JUNIOR X JBEL</p>
+                <p>© 2025 LANATION SHOP</p>
               </div>
             </div>
           </div>

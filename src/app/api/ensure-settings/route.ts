@@ -15,18 +15,18 @@ export async function GET() {
       console.log('⚠️ Aucun settings trouvé - création vide');
       // Créer des settings vides pour que l'admin puisse tout configurer
       const emptySettings = {
-        shopTitle: '',
-        shopSubtitle: '',
-        scrollingText: '',
-        loadingText: '',
-        bannerText: '',
+        shopTitle: 'LANATION SHOP',
+        shopSubtitle: 'Votre boutique en ligne de confiance',
+        scrollingText: 'LANATION SHOP 📲 • CONTACT • LIVRAISON RAPIDE',
+        loadingText: 'Chargement...',
+        bannerText: 'Bienvenue chez LANATION SHOP',
         backgroundImage: '',
         backgroundOpacity: 20,
         backgroundBlur: 5,
-        telegramLink: '',
-        telegramOrderLink: '',
-        email: '',
-        address: '',
+        telegramLink: 'https://t.me/lanation_shop',
+        telegramOrderLink: 'https://t.me/lanation_orders',
+        email: 'contact@lanation.com',
+        address: 'Votre adresse ici',
         titleStyle: 'glow',
         createdAt: new Date(),
         updatedAt: new Date()
