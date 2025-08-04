@@ -46,26 +46,28 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Upload vers Cloudinary avec upload unsigned
+    // Upload vers Cloudinary avec preset unsigned
     const uploadResult = await new Promise((resolve, reject) => {
-      const uploadOptions = {
-        upload_preset: 'lntdl_media',
-        overwrite: false,
-        unique_filename: true
-      };
+      // Créer un FormData pour l'upload
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', new Blob([buffer], { type: file.type }));
+      uploadFormData.append('upload_preset', 'lntdl_media');
+      uploadFormData.append('overwrite', 'false');
+      uploadFormData.append('unique_filename', 'true');
+      uploadFormData.append('use_filename_as_display_name', 'true');
+      uploadFormData.append('use_asset_folder_as_public_id_prefix', 'false');
 
-      // Utiliser fetch pour upload direct vers Cloudinary
-      const formData = new FormData();
-      formData.append('file', new Blob([buffer], { type: file.type }));
-      formData.append('upload_preset', 'lntdl_media');
-      formData.append('overwrite', 'false');
-      formData.append('unique_filename', 'true');
-
+      // Upload direct vers Cloudinary
       fetch(`https://api.cloudinary.com/v1_1/dwez3etsh/${isVideo ? 'video' : 'image'}/upload`, {
         method: 'POST',
-        body: formData
+        body: uploadFormData
       })
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+      })
       .then(result => {
         if (result.error) {
           console.error('❌ Erreur Cloudinary:', result.error);
