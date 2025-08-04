@@ -104,6 +104,8 @@ export default function MediaUploader({
         setError('Format de fichier non supporté. Utilisez JPG, PNG, WebP, HEIC (iPhone), MP4, MOV ou WebM.');
       } else if (errorMessage.includes('string did not match') || errorMessage.includes('expected pattern') || errorMessage.includes('Invalid')) {
         setError('⚠️ Format vidéo non compatible (vidéo iPhone?). Utilisez Cloudinary (bouton bleu) pour ce fichier.');
+      } else if (errorMessage.includes('HEVC') || errorMessage.includes('H.265')) {
+        setError('📱 Vidéo iPhone moderne détectée (HEVC/H.265). Ce format nécessite Cloudinary pour la conversion automatique. Utilisez le bouton bleu ci-dessous.');
       } else {
         setError(`Erreur: ${errorMessage}. Essayez l'upload Cloudinary pour plus de fiabilité.`);
       }
@@ -155,6 +157,11 @@ export default function MediaUploader({
       {error && (
         <div className="mt-2 text-sm text-red-400 bg-red-900/20 px-3 py-2 rounded border border-red-500">
           {error}
+          {(error.includes('HEVC') || error.includes('H.265') || error.includes('Cloudinary')) && (
+            <p className="text-yellow-400 text-xs mt-2">
+              💡 Astuce iPhone: Réglages → Appareil photo → Formats → Choisir "Le plus compatible" pour éviter ce problème.
+            </p>
+          )}
         </div>
       )}
     </div>

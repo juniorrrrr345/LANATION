@@ -114,6 +114,21 @@ export async function POST(request: NextRequest) {
     // Convertir en base64
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+    
+    // Vérifier si c'est une vidéo HEVC (H.265) en inspectant les premiers bytes
+    const isHEVC = buffer.length > 8 && 
+                   (buffer.indexOf(Buffer.from('hvc1')) !== -1 || 
+                    buffer.indexOf(Buffer.from('hev1')) !== -1 ||
+                    buffer.indexOf(Buffer.from('HEVC')) !== -1);
+    
+    if (isHEVC) {
+      console.log('⚠️ Vidéo HEVC/H.265 détectée - format iPhone moderne');
+      return NextResponse.json({ 
+        error: 'Les vidéos HEVC/H.265 (format iPhone récent) ne sont pas supportées en upload direct. Utilisez Cloudinary qui convertira automatiquement la vidéo.',
+        useCloudinary: true
+      }, { status: 400 });
+    }
+    
     const base64 = buffer.toString('base64');
     
     // Pour les fichiers HEIC/HEIF, on utilise le type MIME image/jpeg pour la compatibilité
@@ -142,11 +157,16 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
     
-    console.log('📏 Taille base64:', {
+    console.log('📏 Détails du fichier:', {
+      fileName: file.name,
+      fileType: fileType,
+      originalType: file.type,
       originalSize: file.size,
+      originalSizeMB: Math.round(file.size / 1024 / 1024 * 100) / 100,
       base64Size: base64.length,
       dataUrlSize: dataUrl.length,
-      ratio: Math.round(dataUrl.length / file.size * 100) / 100
+      ratio: Math.round(dataUrl.length / file.size * 100) / 100,
+      base64Preview: base64.substring(0, 100) + '...'
     });
     
     // Vérifier que la taille finale ne dépasse pas 15MB (limite MongoDB)
