@@ -1,0 +1,16 @@
+name: Block Cursor Branches
+
+on:
+  create:
+  push:
+    branches:
+      - 'cursor/**'
+
+jobs:
+  block:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Block cursor branches
+        run: |
+          echo "Blocking cursor branch deployment"
+          exit 1
