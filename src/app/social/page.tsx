@@ -140,8 +140,7 @@ export default function SocialPage() {
                   <div className="flex items-center justify-center space-x-4">
                     <span className="text-4xl">💬</span>
                     <div className="text-center">
-                      <p className="text-2xl font-bold">WhatsApp</p>
-                      <p className="text-sm opacity-90">Contactez-nous directement</p>
+                                      <p className="text-2xl font-bold">Contactez-nous directement</p>
                     </div>
                   </div>
                 </Link>

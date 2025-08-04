@@ -224,7 +224,7 @@ export default function SettingsManager() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-300 mb-2">
-                Lien WhatsApp principal
+                Lien de contact principal
               </label>
               <input
                 type="url"

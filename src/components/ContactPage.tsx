@@ -77,7 +77,7 @@ export default function ContactPage({ content, whatsappLink, socialLinks }: Cont
             className="inline-flex items-center space-x-3 bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-full text-lg font-bold transition-all duration-200 transform hover:scale-105 shadow-lg"
           >
             <span className="text-2xl">💬</span>
-            <span>Contactez-nous sur WhatsApp</span>
+                          <span>Contactez-nous directement</span>
           </a>
         </div>
       )}
