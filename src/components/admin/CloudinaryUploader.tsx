@@ -106,7 +106,7 @@ export default function CloudinaryUploader({
           </label>
           
           <span className="text-sm text-gray-400">
-            Images (10MB) & Vidéos (500MB) - Hébergement cloud
+            Images (10MB) & Vidéos (500MB) - Preset: lntdl_media
           </span>
         </div>
 

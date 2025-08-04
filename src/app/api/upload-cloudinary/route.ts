@@ -74,12 +74,15 @@ export async function POST(request: NextRequest) {
     
     try {
       const uploadResult = await new Promise((resolve, reject) => {
-        // Configuration simplifiée pour éviter les erreurs
+        // Configuration selon vos paramètres Cloudinary
         const uploadOptions: any = {
           resource_type: isVideo ? 'video' : 'image',
-          folder: isVideo ? 'boutique_videos' : 'boutique_images',
-          public_id: `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          overwrite: true
+          upload_preset: 'lntdl_media',
+          overwrite: false,
+          use_filename: false,
+          unique_filename: true,
+          use_filename_as_display_name: true,
+          use_asset_folder_as_public_id_prefix: false
         };
 
         // Ajouter optimisations seulement si nécessaire
