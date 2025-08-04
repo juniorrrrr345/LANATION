@@ -27,7 +27,7 @@ export default function ContactPage({ content, whatsappLink, socialLinks }: Cont
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="container mx-auto px-4 py-8 max-w-4xl pb-32">
       {/* Titre de la page avec style boutique */}
       <div className="text-center mb-8">
         <h1 className="shop-title text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white mb-3">
@@ -69,7 +69,7 @@ export default function ContactPage({ content, whatsappLink, socialLinks }: Cont
 
       {/* Bouton WhatsApp si disponible */}
       {whatsappLink && (
-        <div className="text-center">
+        <div className="text-center mt-8 mb-8">
           <a
             href={whatsappLink}
             target="_blank"
@@ -77,7 +77,7 @@ export default function ContactPage({ content, whatsappLink, socialLinks }: Cont
             className="inline-flex items-center space-x-3 bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-full text-lg font-bold transition-all duration-200 transform hover:scale-105 shadow-lg"
           >
             <span className="text-2xl">💬</span>
-                          <span>Contactez-nous directement</span>
+            <span>Contactez-nous directement</span>
           </a>
         </div>
       )}
