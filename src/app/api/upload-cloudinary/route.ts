@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import cloudinary from '@/lib/cloudinary';
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
@@ -47,29 +46,39 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Upload vers Cloudinary
+    // Upload vers Cloudinary avec upload unsigned
     const uploadResult = await new Promise((resolve, reject) => {
       const uploadOptions = {
-        resource_type: isVideo ? 'video' : 'image',
         upload_preset: 'lntdl_media',
         overwrite: false,
         unique_filename: true
       };
 
-      const uploadStream = cloudinary.uploader.upload_stream(
-        uploadOptions,
-        (error, result) => {
-          if (error) {
-            console.error('❌ Erreur Cloudinary:', error);
-            reject(error);
-          } else {
-            console.log('✅ Upload réussi:', result?.secure_url);
-            resolve(result);
-          }
-        }
-      );
+      // Utiliser fetch pour upload direct vers Cloudinary
+      const formData = new FormData();
+      formData.append('file', new Blob([buffer], { type: file.type }));
+      formData.append('upload_preset', 'lntdl_media');
+      formData.append('overwrite', 'false');
+      formData.append('unique_filename', 'true');
 
-      uploadStream.end(buffer);
+      fetch(`https://api.cloudinary.com/v1_1/dwez3etsh/${isVideo ? 'video' : 'image'}/upload`, {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => response.json())
+      .then(result => {
+        if (result.error) {
+          console.error('❌ Erreur Cloudinary:', result.error);
+          reject(new Error(result.error.message || 'Erreur upload'));
+        } else {
+          console.log('✅ Upload réussi:', result.secure_url);
+          resolve(result);
+        }
+      })
+      .catch(error => {
+        console.error('❌ Erreur fetch:', error);
+        reject(error);
+      });
     });
 
     const result = uploadResult as any;
