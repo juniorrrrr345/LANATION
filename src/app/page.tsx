@@ -223,54 +223,30 @@ export default function HomePage() {
         <div className="global-overlay"></div>
         <div className="content-layer">
           <div className="min-h-screen flex items-center justify-center p-4">
-            <div className="text-center bg-black/60 backdrop-blur-md rounded-3xl p-8 sm:p-12 max-w-lg mx-auto border border-white/20">
-              {/* Logo animé moderne */}
+            <div className="text-center max-w-lg mx-auto">
+              {/* Icône de chargement */}
               <div className="mb-8">
-                <div className="relative w-40 h-40 mx-auto">
-                  <div className="absolute inset-0 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-full blur-2xl opacity-70 animate-pulse"></div>
-                  <div className="absolute inset-0 bg-gradient-to-r from-orange-500 to-red-500 rounded-full blur-xl opacity-50 animate-ping"></div>
-                  <div className="relative z-10 w-full h-full flex items-center justify-center">
-                    <span className="text-8xl animate-bounce filter drop-shadow-2xl">🔥</span>
+                <div className="relative w-32 h-32 mx-auto">
+                  <div className="absolute inset-0 rounded-full border-4 border-white/20"></div>
+                  <div className="absolute inset-0 rounded-full border-4 border-t-white border-r-transparent border-b-transparent border-l-transparent animate-spin"></div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-5xl">⚙️</span>
                   </div>
                 </div>
               </div>
               
-              {/* Titre principal bien centré avec effet moderne */}
-              <div className="text-center mb-12">
-                <h1 className="text-6xl sm:text-8xl lg:text-9xl font-black text-white mb-6 tracking-wider leading-none">
-                  <span className="block transform hover:scale-105 transition-transform duration-300">
-                    LANATION
-                  </span>
-                  <span className="block transform hover:scale-105 transition-transform duration-300" style={{ animationDelay: '0.2s' }}>
-                    DU LAIT
-                  </span>
-                </h1>
+              {/* Message de chargement */}
+              <div className="text-center">
+                <h2 className="text-2xl sm:text-3xl font-bold text-white mb-4">
+                  Chargement Du Menu.. ⚙️
+                </h2>
                 
-                <div className="w-24 h-1 bg-white mx-auto mb-8 rounded-full shadow-lg"></div>
-                
-                <p className="text-xl sm:text-2xl text-white/90 font-medium drop-shadow-lg mb-12">
-                  Votre boutique en ligne de confiance
-                </p>
-              </div>
-              
-              {/* Barre de chargement moderne */}
-              <div className="w-96 max-w-full mx-auto mb-12">
-                <div className="h-3 bg-white/10 rounded-full overflow-hidden border border-white/20 shadow-inner">
-                  <div className="h-full bg-gradient-to-r from-white to-white/80 rounded-full shadow-lg animate-loading-bar"></div>
+                {/* Barre de progression simple */}
+                <div className="w-64 max-w-full mx-auto">
+                  <div className="h-2 bg-white/20 rounded-full overflow-hidden">
+                    <div className="h-full bg-white rounded-full animate-loading-bar"></div>
+                  </div>
                 </div>
-                <div className="mt-4 text-sm text-white/80 font-medium text-center">Chargement en cours...</div>
-              </div>
-              
-              {/* Animation de points modernes */}
-              <div className="flex justify-center gap-4 mb-12">
-                <div className="w-4 h-4 bg-white rounded-full animate-pulse shadow-lg shadow-white/30" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-4 h-4 bg-white rounded-full animate-pulse shadow-lg shadow-white/30" style={{ animationDelay: '300ms' }}></div>
-                <div className="w-4 h-4 bg-white rounded-full animate-pulse shadow-lg shadow-white/30" style={{ animationDelay: '600ms' }}></div>
-              </div>
-              
-              {/* Footer */}
-              <div className="text-white text-sm font-medium drop-shadow-md">
-                <p>© 2025 LANATIONDULAIT</p>
               </div>
             </div>
           </div>
