@@ -3,10 +3,6 @@ import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
 import { connectToDatabase } from '@/lib/mongodb-fixed';
 
-// Force le rendu dynamique pour éviter le cache
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
-
 async function getContactData() {
   try {
     const { db } = await connectToDatabase();
@@ -16,8 +12,6 @@ async function getContactData() {
       db.collection('settings').findOne({}),
       db.collection('socialLinks').find({ isActive: true }).toArray()
     ]);
-    
-    console.log('📄 Contenu contact chargé:', page?.content?.substring(0, 50) + '...');
     
     return {
       content: page?.content || '',

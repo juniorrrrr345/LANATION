@@ -16,7 +16,7 @@ export default function SimpleTextEditor({
 }: SimpleTextEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Fonction pour insérer des éléments de formatage Markdown
+  // Fonction pour insérer des éléments de formatage simple
   const insertElement = (element: string) => {
     if (!textareaRef.current) return;
 
@@ -26,63 +26,37 @@ export default function SimpleTextEditor({
     const selectedText = value.substring(start, end);
     
     let insertText = '';
-    let newCursorPos = start;
     
     switch (element) {
-      case 'h1':
-        insertText = selectedText ? `# ${selectedText}\n` : '# Titre principal\n';
-        newCursorPos = start + 2;
+      case 'title':
+        insertText = selectedText ? `\n\nTITRE: ${selectedText}\n` : '\n\nTITRE: Votre titre ici\n';
         break;
-      case 'h2':
-        insertText = selectedText ? `## ${selectedText}\n` : '## Sous-titre\n';
-        newCursorPos = start + 3;
-        break;
-      case 'h3':
-        insertText = selectedText ? `### ${selectedText}\n` : '### Section\n';
-        newCursorPos = start + 4;
-        break;
-      case 'bold':
-        insertText = selectedText ? `**${selectedText}**` : '**texte en gras**';
-        newCursorPos = start + 2;
-        break;
-      case 'italic':
-        insertText = selectedText ? `*${selectedText}*` : '*texte en italique*';
-        newCursorPos = start + 1;
+      case 'subtitle':
+        insertText = selectedText ? `\n\nSOUS-TITRE: ${selectedText}\n` : '\n\nSOUS-TITRE: Votre sous-titre ici\n';
         break;
       case 'list':
-        insertText = '\n- Premier élément\n- Deuxième élément\n- Troisième élément\n';
-        newCursorPos = start + 3;
+        insertText = '\n\n• Premier élément\n• Deuxième élément\n• Troisième élément\n';
         break;
       case 'number':
-        insertText = '\n1. Premier élément\n2. Deuxième élément\n3. Troisième élément\n';
-        newCursorPos = start + 3;
+        insertText = '\n\n1. Premier élément\n2. Deuxième élément\n3. Troisième élément\n';
         break;
       case 'separator':
-        insertText = '\n---\n';
-        newCursorPos = start + insertText.length;
+        insertText = '\n\n─────────────────\n';
         break;
-      case 'code':
-        insertText = selectedText ? `\`${selectedText}\`` : '`code`';
-        newCursorPos = start + 1;
-        break;
-      case 'link':
-        insertText = selectedText ? `[${selectedText}](url)` : '[texte du lien](https://example.com)';
-        newCursorPos = start + 1;
+      case 'highlight':
+        insertText = selectedText ? `*** ${selectedText} ***` : '*** Texte important ***';
         break;
       case 'contact':
-        insertText = '\n## 📞 Contact\n\n**Téléphone** : +33 1 23 45 67 89\n**Email** : contact@example.com\n**Adresse** : 123 Rue Example, 75001 Paris\n';
+        insertText = '\n\n📞 Contact: Votre numéro\n📧 Email: votre@email.com\n📍 Adresse: Votre adresse\n';
         break;
       case 'info':
-        insertText = '\n## ℹ️ Information\n\n';
-        newCursorPos = start + insertText.length;
+        insertText = '\n\nℹ️ INFORMATION IMPORTANTE\n\n';
         break;
       case 'warning':
-        insertText = '\n## ⚠️ Attention\n\n';
-        newCursorPos = start + insertText.length;
+        insertText = '\n\n⚠️ ATTENTION\n\n';
         break;
       case 'success':
-        insertText = '\n## ✅ Succès\n\n';
-        newCursorPos = start + insertText.length;
+        insertText = '\n\n✅ SUCCÈS\n\n';
         break;
     }
     
@@ -92,10 +66,11 @@ export default function SimpleTextEditor({
     
     onChange(newValue);
     
-    // Placer le curseur à la bonne position
+    // Placer le curseur après l'insertion
     setTimeout(() => {
       if (textareaRef.current) {
-        textareaRef.current.setSelectionRange(newCursorPos, newCursorPos);
+        const newPosition = start + insertText.length;
+        textareaRef.current.setSelectionRange(newPosition, newPosition);
         textareaRef.current.focus();
       }
     }, 0);
@@ -103,56 +78,22 @@ export default function SimpleTextEditor({
 
   return (
     <div className={`simple-text-editor ${className}`}>
-      {/* Barre d'outils Markdown */}
+      {/* Barre d'outils simple */}
       <div className="flex flex-wrap gap-2 mb-3 p-3 bg-gray-800/50 rounded-lg border border-white/10">
         <button
-          onClick={() => insertElement('h1')}
+          onClick={() => insertElement('title')}
           className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-bold transition-all duration-200"
-          title="Titre principal (# )"
+          title="Ajouter un titre"
         >
-          H1
+          TITRE
         </button>
         
         <button
-          onClick={() => insertElement('h2')}
+          onClick={() => insertElement('subtitle')}
           className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm transition-all duration-200"
-          title="Sous-titre (## )"
+          title="Ajouter un sous-titre"
         >
-          H2
-        </button>
-        
-        <button
-          onClick={() => insertElement('h3')}
-          className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm transition-all duration-200"
-          title="Section (### )"
-        >
-          H3
-        </button>
-        
-        <div className="w-px h-6 bg-white/20 mx-2"></div>
-        
-        <button
-          onClick={() => insertElement('bold')}
-          className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-bold transition-all duration-200"
-          title="Gras (**texte**)"
-        >
-          B
-        </button>
-        
-        <button
-          onClick={() => insertElement('italic')}
-          className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm italic transition-all duration-200"
-          title="Italique (*texte*)"
-        >
-          I
-        </button>
-        
-        <button
-          onClick={() => insertElement('code')}
-          className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm font-mono transition-all duration-200"
-          title="Code (`code`)"
-        >
-          {'</>'}
+          SOUS-TITRE
         </button>
         
         <div className="w-px h-6 bg-white/20 mx-2"></div>
@@ -160,31 +101,33 @@ export default function SimpleTextEditor({
         <button
           onClick={() => insertElement('list')}
           className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm transition-all duration-200"
-          title="Liste à puces (- )"
+          title="Liste à puces"
         >
-          • Liste
+          •
         </button>
         
         <button
           onClick={() => insertElement('number')}
           className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm transition-all duration-200"
-          title="Liste numérotée (1. )"
+          title="Liste numérotée"
         >
-          1. Liste
+          1.
         </button>
         
+        <div className="w-px h-6 bg-white/20 mx-2"></div>
+        
         <button
-          onClick={() => insertElement('link')}
+          onClick={() => insertElement('highlight')}
           className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm transition-all duration-200"
-          title="Lien [texte](url)"
+          title="Texte important"
         >
-          🔗
+          ***
         </button>
         
         <button
           onClick={() => insertElement('separator')}
           className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg text-sm transition-all duration-200"
-          title="Séparateur (---)"
+          title="Séparateur"
         >
           ─
         </button>
@@ -231,26 +174,18 @@ export default function SimpleTextEditor({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         rows={15}
-        className="w-full bg-gray-800 border border-white/20 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-white resize-y font-mono text-sm leading-relaxed"
+        className="w-full bg-gray-800 border border-white/20 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-white resize-y text-base leading-relaxed"
       />
       
-      {/* Aide Markdown */}
+      {/* Aide */}
       <div className="mt-2 text-xs text-gray-400">
-        <p>💡 <strong>Syntaxe Markdown :</strong></p>
-        <div className="mt-1 grid grid-cols-2 gap-2 ml-4">
-          <div>
-            <p>• <code className="bg-gray-700 px-1"># Titre</code> → Titre principal</p>
-            <p>• <code className="bg-gray-700 px-1">## Sous-titre</code> → Sous-titre</p>
-            <p>• <code className="bg-gray-700 px-1">**gras**</code> → <strong>gras</strong></p>
-            <p>• <code className="bg-gray-700 px-1">*italique*</code> → <em>italique</em></p>
-          </div>
-          <div>
-            <p>• <code className="bg-gray-700 px-1">- item</code> → Liste à puces</p>
-            <p>• <code className="bg-gray-700 px-1">1. item</code> → Liste numérotée</p>
-            <p>• <code className="bg-gray-700 px-1">[texte](url)</code> → Lien</p>
-            <p>• <code className="bg-gray-700 px-1">`code`</code> → Code inline</p>
-          </div>
-        </div>
+        <p>💡 <strong>Conseils :</strong></p>
+        <ul className="mt-1 space-y-1 ml-4">
+          <li>• Sélectionnez du texte puis cliquez sur *** pour le mettre en évidence</li>
+          <li>• Utilisez les boutons pour insérer des éléments prédéfinis</li>
+          <li>• Les changements apparaissent immédiatement sur la boutique</li>
+          <li>• N'oubliez pas de sauvegarder vos modifications</li>
+        </ul>
       </div>
     </div>
   );

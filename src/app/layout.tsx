@@ -3,7 +3,6 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import GlobalBackgroundProvider from '@/components/GlobalBackgroundProvider'
 import CachePreloader from '@/components/CachePreloader'
-import AdminFloatingButton from '@/components/AdminFloatingButton'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -109,7 +108,6 @@ export default function RootLayout({
         <GlobalBackgroundProvider />
         <CachePreloader />
         {children}
-        <AdminFloatingButton />
       </body>
     </html>
   )
