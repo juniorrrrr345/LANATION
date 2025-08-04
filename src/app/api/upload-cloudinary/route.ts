@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
         }, { status: 400 });
       }
     }
+
     const maxSize = isVideo ? 500 * 1024 * 1024 : 10 * 1024 * 1024; // 500MB vidéo, 10MB image
     
     if (file.size > maxSize) {
@@ -72,88 +73,86 @@ export async function POST(request: NextRequest) {
     // Upload vers Cloudinary avec gestion d'erreur améliorée
     console.log('⚡ Début upload vers Cloudinary...');
     
-    try {
-      const uploadResult = await new Promise((resolve, reject) => {
-        // Configuration selon vos paramètres Cloudinary
-        const uploadOptions: any = {
-          resource_type: isVideo ? 'video' : 'image',
-          upload_preset: 'lntdl_media',
-          overwrite: false,
-          use_filename: false,
-          unique_filename: true,
-          use_filename_as_display_name: true,
-          use_asset_folder_as_public_id_prefix: false
-        };
-
-        // Ajouter optimisations seulement si nécessaire
-        if (!isVideo) {
-          uploadOptions.quality = 'auto';
-          uploadOptions.width = 800;
-          uploadOptions.crop = 'limit';
-        }
-
-        console.log('☁️ Options upload:', uploadOptions);
-
-        const uploadStream = cloudinary.uploader.upload_stream(
-          uploadOptions,
-          (error, result) => {
-            if (error) {
-              console.error('❌ Erreur Cloudinary détaillée:', {
-                message: error.message,
-                http_code: error.http_code,
-                name: error.name,
-                error: error
-              });
-              reject(error);
-            } else {
-              console.log('✅ Upload Cloudinary réussi:', {
-                public_id: result?.public_id,
-                url: result?.secure_url,
-                format: result?.format,
-                bytes: result?.bytes
-              });
-              resolve(result);
-            }
-          }
-        );
-
-        if (!uploadStream) {
-          console.error('❌ Impossible de créer le stream upload');
-          reject(new Error('Upload stream creation failed'));
-          return;
-        }
-
-        uploadStream.end(buffer);
-      });
-
-      const result = uploadResult as any;
-      
-      const response = {
-        url: result.secure_url,
-        public_id: result.public_id,
-        type: isVideo ? 'video' : 'image',
-        filename: file.name,
-        size: file.size,
-        width: result.width,
-        height: result.height,
-        duration: result.duration || null, // Pour les vidéos
-        format: result.format
+    const uploadResult = await new Promise((resolve, reject) => {
+      // Configuration selon vos paramètres Cloudinary
+      const uploadOptions: any = {
+        resource_type: isVideo ? 'video' : 'image',
+        upload_preset: 'lntdl_media',
+        overwrite: false,
+        use_filename: false,
+        unique_filename: true,
+        use_filename_as_display_name: true,
+        use_asset_folder_as_public_id_prefix: false
       };
 
-      console.log('🎯 Upload terminé:', {
-        url: result.secure_url,
-        type: response.type,
-        size: Math.round(file.size / 1024 / 1024 * 100) / 100 + 'MB'
-      });
+      // Ajouter optimisations seulement si nécessaire
+      if (!isVideo) {
+        uploadOptions.quality = 'auto';
+        uploadOptions.width = 800;
+        uploadOptions.crop = 'limit';
+      }
 
-      return NextResponse.json(response);
+      console.log('☁️ Options upload:', uploadOptions);
 
-    } catch (error) {
-      console.error('❌ Erreur upload Cloudinary:', error);
-      return NextResponse.json({ 
-        error: 'Erreur lors de l\'upload',
-        details: error instanceof Error ? error.message : 'Erreur inconnue'
-      }, { status: 500 });
-    }
+      const uploadStream = cloudinary.uploader.upload_stream(
+        uploadOptions,
+        (error, result) => {
+          if (error) {
+            console.error('❌ Erreur Cloudinary détaillée:', {
+              message: error.message,
+              http_code: error.http_code,
+              name: error.name,
+              error: error
+            });
+            reject(error);
+          } else {
+            console.log('✅ Upload Cloudinary réussi:', {
+              public_id: result?.public_id,
+              url: result?.secure_url,
+              format: result?.format,
+              bytes: result?.bytes
+            });
+            resolve(result);
+          }
+        }
+      );
+
+      if (!uploadStream) {
+        console.error('❌ Impossible de créer le stream upload');
+        reject(new Error('Upload stream creation failed'));
+        return;
+      }
+
+      uploadStream.end(buffer);
+    });
+
+    const result = uploadResult as any;
+    
+    const response = {
+      url: result.secure_url,
+      public_id: result.public_id,
+      type: isVideo ? 'video' : 'image',
+      filename: file.name,
+      size: file.size,
+      width: result.width,
+      height: result.height,
+      duration: result.duration || null, // Pour les vidéos
+      format: result.format
+    };
+
+    console.log('🎯 Upload terminé:', {
+      url: result.secure_url,
+      type: response.type,
+      size: Math.round(file.size / 1024 / 1024 * 100) / 100 + 'MB'
+    });
+
+    return NextResponse.json(response);
+
+  } catch (error) {
+    console.error('❌ Erreur upload Cloudinary:', error);
+    return NextResponse.json({ 
+      error: 'Erreur lors de l\'upload',
+      details: error instanceof Error ? error.message : 'Erreur inconnue'
+    }, { status: 500 });
   }
 }
