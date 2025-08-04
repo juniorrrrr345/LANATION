@@ -113,7 +113,6 @@ export default function MediaUploader({
             accept={acceptedTypes}
             onChange={handleFileSelect}
             disabled={uploading}
-            capture="environment" // Améliore la compatibilité mobile
           />
           {uploading ? (
             <>

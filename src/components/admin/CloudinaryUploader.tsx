@@ -128,7 +128,6 @@ export default function CloudinaryUploader({
               accept="image/*,video/*,.jpg,.jpeg,.png,.webp,.gif,.heic,.heif,.mp4,.mov,.avi,.3gp,.3g2,.webm,.mkv"
               onChange={handleFileSelect}
               disabled={uploading}
-              capture="environment" // Améliore la compatibilité mobile
             />
             {uploading ? (
               <>
