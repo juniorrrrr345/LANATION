@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import VideoConverter from './VideoConverter';
 
 interface MediaUploaderProps {
   onMediaSelected: (url: string, type: 'image' | 'video') => void;
@@ -16,6 +17,7 @@ export default function MediaUploader({
 }: MediaUploaderProps) {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const [showConverter, setShowConverter] = useState(false);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
