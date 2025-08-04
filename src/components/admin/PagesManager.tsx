@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { invalidateCache, reloadPage } from '@/lib/cacheInvalidator';
 
 interface PageContent {
   slug: string;
@@ -85,7 +86,7 @@ export default function PagesManager() {
     }
   };
 
-  // Sauvegarder
+  // Sauvegarder avec mise à jour instantanée
   const savePage = async () => {
     try {
       setIsSaving(true);
@@ -110,10 +111,16 @@ export default function PagesManager() {
       if (result.success) {
         setSaveStatus('✅ Sauvegardé avec succès !');
         
-        // Invalider le cache pour forcer le rechargement
+        // Invalider le cache et forcer le rechargement instantané
+        invalidateCache();
+        reloadPage(activeTab);
+        
+        // Recharger la page si elle est ouverte dans un autre onglet
         if (typeof window !== 'undefined') {
-          localStorage.removeItem('contentCache');
-          window.dispatchEvent(new CustomEvent('cacheUpdated'));
+          // Utiliser BroadcastChannel pour synchroniser entre onglets
+          const channel = new BroadcastChannel('page_updates');
+          channel.postMessage({ type: 'page_updated', page: activeTab });
+          channel.close();
         }
       } else {
         setSaveStatus('❌ Erreur de sauvegarde');
@@ -155,39 +162,44 @@ export default function PagesManager() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Onglets */}
-      <div className="flex space-x-2">
-        <button
-          onClick={() => setActiveTab('info')}
-          className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-            activeTab === 'info'
-              ? 'bg-white/20 text-white border border-white/30'
-              : 'bg-gray-800/50 text-gray-300 hover:bg-white/10 hover:text-white'
-          }`}
-        >
-          Info
-        </button>
-        <button
-          onClick={() => setActiveTab('questions')}
-          className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-            activeTab === 'questions'
-              ? 'bg-white/20 text-white border border-white/30'
-              : 'bg-gray-800/50 text-gray-300 hover:bg-white/10 hover:text-white'
-          }`}
-        >
-          Questions
-        </button>
-        <button
-          onClick={() => setActiveTab('contact')}
-          className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
-            activeTab === 'contact'
-              ? 'bg-white/20 text-white border border-white/30'
-              : 'bg-gray-800/50 text-gray-300 hover:bg-white/10 hover:text-white'
-          }`}
-        >
-          Contact
-        </button>
+    <div className="space-y-4 sm:space-y-6 p-4 sm:p-6 max-w-6xl mx-auto">
+      {/* Titre responsive */}
+      <h2 className="text-xl sm:text-2xl font-bold text-white">📄 Gestion des Pages</h2>
+
+      {/* Onglets responsive avec scroll horizontal sur mobile */}
+      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="flex space-x-2 min-w-max sm:min-w-0">
+          <button
+            onClick={() => setActiveTab('info')}
+            className={`px-3 sm:px-4 py-2 rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+              activeTab === 'info'
+                ? 'bg-white/20 text-white border border-white/30'
+                : 'bg-gray-800/50 text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            Info
+          </button>
+          <button
+            onClick={() => setActiveTab('questions')}
+            className={`px-3 sm:px-4 py-2 rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+              activeTab === 'questions'
+                ? 'bg-white/20 text-white border border-white/30'
+                : 'bg-gray-800/50 text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            Questions
+          </button>
+          <button
+            onClick={() => setActiveTab('contact')}
+            className={`px-3 sm:px-4 py-2 rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+              activeTab === 'contact'
+                ? 'bg-white/20 text-white border border-white/30'
+                : 'bg-gray-800/50 text-gray-300 hover:bg-white/10 hover:text-white'
+            }`}
+          >
+            Contact
+          </button>
+        </div>
       </div>
 
       {/* Contenu de la page */}
@@ -200,7 +212,7 @@ export default function PagesManager() {
             type="text"
             value={pageContent[activeTab].title}
             onChange={(e) => updateContent('title', e.target.value)}
-            className="w-full bg-gray-800 border border-white/20 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-white"
+            className="w-full bg-gray-800 border border-white/20 text-white rounded-lg px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-white"
             placeholder="Titre de la page"
           />
         </div>
@@ -215,24 +227,24 @@ export default function PagesManager() {
           <textarea
             value={pageContent[activeTab].content}
             onChange={(e) => updateContent('content', e.target.value)}
-            rows={15}
-            className="w-full px-4 py-3 bg-gray-800 border border-white/20 rounded-lg text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-white resize-y"
+            rows={10}
+            className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-gray-800 border border-white/20 rounded-lg text-white font-mono text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-white resize-y min-h-[200px] sm:min-h-[300px]"
             placeholder="Contenu de la page..."
           />
         </div>
 
-        {/* Aide Markdown */}
-        <div className="bg-gray-800/50 rounded-lg p-4 text-xs text-gray-400">
+        {/* Aide Markdown responsive */}
+        <div className="bg-gray-800/50 rounded-lg p-3 sm:p-4 text-xs text-gray-400">
           <p className="font-semibold mb-2">Syntaxe Markdown :</p>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
+            <div className="space-y-1">
               <p>• # Titre principal</p>
               <p>• ## Sous-titre</p>
               <p>• ### Section</p>
               <p>• **texte en gras**</p>
               <p>• *texte en italique*</p>
             </div>
-            <div>
+            <div className="space-y-1">
               <p>• - élément de liste</p>
               <p>• 1. liste numérotée</p>
               <p>• `code inline`</p>
@@ -241,19 +253,31 @@ export default function PagesManager() {
           </div>
         </div>
 
-        {/* Bouton de sauvegarde */}
-        <div className="flex justify-between items-center">
+        {/* Bouton de sauvegarde responsive avec statut */}
+        <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center sticky bottom-0 bg-black/80 backdrop-blur-sm p-4 -mx-4 sm:mx-0 sm:p-0 sm:bg-transparent sm:backdrop-blur-none border-t sm:border-0 border-white/10">
           <button
             onClick={savePage}
             disabled={isSaving}
-            className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-medium rounded-lg transition-all duration-200 disabled:opacity-50"
+            className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-105 disabled:transform-none"
           >
-            {isSaving ? 'Sauvegarde...' : 'Sauvegarder'}
+            {isSaving ? (
+              <span className="flex items-center justify-center">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Sauvegarde...
+              </span>
+            ) : (
+              '💾 Sauvegarder'
+            )}
           </button>
           
           {saveStatus && (
-            <span className={`text-sm ${
-              saveStatus.includes('✅') ? 'text-green-400' : 'text-red-400'
+            <span className={`text-sm font-medium ${
+              saveStatus.includes('✅') ? 'text-green-400' : 
+              saveStatus.includes('❌') ? 'text-red-400' : 
+              'text-yellow-400'
             }`}>
               {saveStatus}
             </span>

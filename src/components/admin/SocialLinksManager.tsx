@@ -99,7 +99,25 @@ export default function SocialLinksManager() {
         
                   setShowModal(false);
           
-          // Invalider le cache après la sauvegarde
+          // Invalider le cache et forcer le rechargement instantané
+          if (typeof window !== 'undefined') {
+            // Supprimer le cache local
+            localStorage.removeItem('socialLinksCache');
+            
+            // Émettre un événement pour notifier les autres composants
+            window.dispatchEvent(new CustomEvent('socialLinksUpdated'));
+            
+            // Utiliser BroadcastChannel pour synchroniser entre onglets
+            try {
+              const channel = new BroadcastChannel('social_updates');
+              channel.postMessage({ type: 'social_links_updated' });
+              channel.close();
+            } catch (e) {
+              console.log('BroadcastChannel non supporté');
+            }
+          }
+          
+          // Invalider le cache serveur
           try {
             await fetch('/api/cache/invalidate', { method: 'POST' });
           } catch (error) {

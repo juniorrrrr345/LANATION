@@ -1,7 +1,9 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
-import { connectToDatabase } from '@/lib/mongodb-fixed';
 
 interface SocialLink {
   _id: string;
@@ -20,31 +22,91 @@ interface Settings {
   whatsappLink: string;
 }
 
-async function getSocialData() {
-  try {
-    const { db } = await connectToDatabase();
-    
-    const [socialLinks, settings] = await Promise.all([
-      db.collection('socialLinks').find({ isActive: true }).toArray(),
-      db.collection('settings').findOne({})
-    ]);
-    
-    return {
-      socialLinks: socialLinks as SocialLink[],
-      settings: settings as Settings | null
-    };
-  } catch (error) {
-    console.error('Erreur chargement social:', error);
-    return {
-      socialLinks: [],
-      settings: null
-    };
-  }
-}
+export default function SocialPage() {
+  const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
+  const [settings, setSettings] = useState<Settings | null>(null);
+  const [loading, setLoading] = useState(true);
 
-export default async function SocialPage() {
-  // Charger les données côté serveur
-  const { socialLinks, settings } = await getSocialData();
+  const loadSocialData = async () => {
+    try {
+      const [socialRes, settingsRes] = await Promise.all([
+        fetch('/api/social-links', { cache: 'no-store' }),
+        fetch('/api/settings', { cache: 'no-store' })
+      ]);
+
+      if (socialRes.ok) {
+        const links = await socialRes.json();
+        setSocialLinks(links.filter((link: SocialLink) => link.isActive));
+      }
+
+      if (settingsRes.ok) {
+        const settingsData = await settingsRes.json();
+        setSettings(settingsData);
+      }
+    } catch (error) {
+      console.error('Erreur chargement social:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSocialData();
+
+    // Écouter les mises à jour des réseaux sociaux
+    const handleSocialUpdate = () => {
+      console.log('🔄 Rechargement des réseaux sociaux...');
+      loadSocialData();
+    };
+
+    const handleCacheInvalidated = () => {
+      console.log('🔄 Cache invalidé, rechargement...');
+      loadSocialData();
+    };
+
+    // Écouter les événements
+    window.addEventListener('socialLinksUpdated', handleSocialUpdate);
+    window.addEventListener('cacheInvalidated', handleCacheInvalidated);
+
+    // Écouter les mises à jour depuis d'autres onglets
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel('social_updates');
+      channel.onmessage = (event) => {
+        if (event.data.type === 'social_links_updated') {
+          console.log('🔄 Mise à jour depuis un autre onglet...');
+          loadSocialData();
+        }
+      };
+    } catch (e) {
+      console.log('BroadcastChannel non supporté');
+    }
+
+    // Nettoyer les listeners
+    return () => {
+      window.removeEventListener('socialLinksUpdated', handleSocialUpdate);
+      window.removeEventListener('cacheInvalidated', handleCacheInvalidated);
+      channel?.close();
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="main-container">
+        <div className="global-overlay"></div>
+        <div className="content-layer">
+          <Header />
+          <div className="pt-12 sm:pt-14">
+            <div className="h-4 sm:h-6"></div>
+            <div className="text-center py-8">
+              <p className="text-white/60">Chargement...</p>
+            </div>
+          </div>
+          <BottomNav />
+        </div>
+      </div>
+    );
+  }
 
   // Structure cohérente avec la boutique principale
   return (
@@ -55,88 +117,85 @@ export default async function SocialPage() {
       {/* Contenu principal */}
       <div className="content-layer">
         <Header />
-        
         <div className="pt-12 sm:pt-14">
           <div className="h-4 sm:h-6"></div>
-          
-          <main className="pt-4 pb-24 sm:pb-28 px-3 sm:px-4 lg:px-6 xl:px-8 max-w-7xl mx-auto">
+          <main className="pt-4 pb-24 sm:pb-28 px-3 sm:px-4 lg:px-6 xl:px-8 max-w-4xl mx-auto">
             {/* Titre de la page avec style boutique */}
-            <div className="text-center mb-8 sm:mb-12">
+            <div className="text-center mb-8">
               <h1 className="shop-title text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white mb-3">
-                Nos Réseaux
+                Suivez-nous
               </h1>
-              <div className="w-20 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto mb-4"></div>
-              <p className="text-white text-base sm:text-lg max-w-xl mx-auto px-4 font-semibold bg-black/50 backdrop-blur-sm py-2 px-4 rounded-lg">
-                Rejoignez <span className="text-yellow-400">{settings?.shopTitle || 'notre boutique'}</span> sur nos réseaux sociaux
-              </p>
+              <div className="w-20 h-0.5 bg-gradient-to-r from-blue-500 to-purple-500 mx-auto"></div>
             </div>
 
-            {socialLinks.length > 0 ? (
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-                {socialLinks.map((link) => (
-                  <a
-                    key={link._id}
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="group relative overflow-hidden rounded-xl transition-all duration-300 transform hover:scale-105 bg-gray-900/50 backdrop-blur-sm border border-white/10 hover:border-white/20"
-                  >
-                    {/* Effet de hover */}
-                    <div 
-                      className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-300"
-                      style={{
-                        background: `linear-gradient(135deg, ${link.color}, transparent)`
-                      }}
-                    />
-                    
-                    <div className="relative p-4 sm:p-6 text-center">
-                      {/* Icône */}
-                      <div className="text-2xl sm:text-3xl mb-2">{link.icon}</div>
-                      
-                      {/* Nom du réseau */}
-                      <h3 className="text-sm sm:text-base font-semibold text-white mb-2 truncate">
-                        {link.name}
-                      </h3>
-                      
-                      {/* Petit indicateur de couleur */}
-                      <div 
-                        className="w-8 h-1 mx-auto rounded-full"
-                        style={{ backgroundColor: link.color }}
-                      />
-                    </div>
-                  </a>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-16">
-                <p className="text-gray-400">
-                  Aucun réseau social configuré pour le moment.
-                </p>
-              </div>
-            )}
-
-            {/* Section contact plus visible */}
+            {/* WhatsApp si disponible */}
             {settings?.whatsappLink && (
-              <div className="mt-12 sm:mt-16 text-center">
-                <h2 className="text-xl sm:text-2xl font-bold text-white mb-6">
-                  <span className="text-2xl">💬</span> Besoin d&apos;aide ?
-                </h2>
-                <a
+              <div className="mb-8">
+                <Link 
                   href={settings.whatsappLink}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center space-x-3 bg-green-600 hover:bg-green-700 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-full text-base sm:text-lg font-bold transition-all duration-200 transform hover:scale-105 shadow-lg"
+                  className="block w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white rounded-2xl p-6 shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
                 >
-                  <span className="text-xl sm:text-2xl">💬</span>
-                  <span>Contactez-nous sur WhatsApp</span>
-                </a>
+                  <div className="flex items-center justify-center space-x-4">
+                    <span className="text-4xl">💬</span>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold">WhatsApp</p>
+                      <p className="text-sm opacity-90">Contactez-nous directement</p>
+                    </div>
+                  </div>
+                </Link>
+              </div>
+            )}
+
+            {/* Grille de liens sociaux */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+              {socialLinks.map((link) => (
+                <Link
+                  key={link._id}
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group relative overflow-hidden rounded-2xl shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
+                  style={{
+                    backgroundColor: link.color + '20',
+                    borderColor: link.color,
+                    borderWidth: '2px'
+                  }}
+                >
+                  <div className="p-6 backdrop-blur-sm">
+                    <div className="flex items-center space-x-4">
+                      <span className="text-4xl group-hover:scale-110 transition-transform duration-300">
+                        {link.icon}
+                      </span>
+                      <div className="flex-1">
+                        <h3 className="text-xl font-bold text-white">{link.name}</h3>
+                        <p className="text-sm text-gray-300 opacity-75">Suivez-nous</p>
+                      </div>
+                      <svg className="w-6 h-6 text-white opacity-50 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                      </svg>
+                    </div>
+                  </div>
+                  <div 
+                    className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity duration-300"
+                    style={{ backgroundColor: link.color }}
+                  />
+                </Link>
+              ))}
+            </div>
+
+            {/* Message si aucun lien */}
+            {socialLinks.length === 0 && !settings?.whatsappLink && (
+              <div className="text-center py-12">
+                <p className="text-gray-400 text-lg">Aucun réseau social configuré pour le moment.</p>
               </div>
             )}
           </main>
         </div>
       </div>
       
-      {/* BottomNav toujours visible */}
+      {/* BottomNav */}
       <BottomNav />
     </div>
   );

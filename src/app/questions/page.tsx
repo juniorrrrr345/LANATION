@@ -14,22 +14,60 @@ export default function QuestionsPageRoute() {
   const [questionsData, setQuestionsData] = useState<QuestionsData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const loadQuestionsPage = async () => {
+    try {
+      const response = await fetch('/api/pages/questions', { cache: 'no-store' });
+      if (response.ok) {
+        const data = await response.json();
+        setQuestionsData(data);
+      }
+    } catch (error) {
+      console.error('Erreur chargement page questions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const loadQuestionsPage = async () => {
-      try {
-        const response = await fetch('/api/pages/questions', { cache: 'no-store' });
-        if (response.ok) {
-          const data = await response.json();
-          setQuestionsData(data);
-        }
-      } catch (error) {
-        console.error('Erreur chargement page questions:', error);
-      } finally {
-        setLoading(false);
+    loadQuestionsPage();
+
+    // Écouter les mises à jour de la page
+    const handlePageUpdate = (event: CustomEvent) => {
+      if (event.detail?.page === 'questions' || !event.detail?.page) {
+        console.log('🔄 Rechargement de la page questions...');
+        loadQuestionsPage();
       }
     };
 
-    loadQuestionsPage();
+    const handleCacheInvalidated = () => {
+      console.log('🔄 Cache invalidé, rechargement...');
+      loadQuestionsPage();
+    };
+
+    // Écouter les événements
+    window.addEventListener('pageUpdated', handlePageUpdate as EventListener);
+    window.addEventListener('cacheInvalidated', handleCacheInvalidated);
+
+    // Écouter les mises à jour depuis d'autres onglets
+    let channel: BroadcastChannel | null = null;
+    try {
+      channel = new BroadcastChannel('page_updates');
+      channel.onmessage = (event) => {
+        if (event.data.type === 'page_updated' && event.data.page === 'questions') {
+          console.log('🔄 Mise à jour depuis un autre onglet...');
+          loadQuestionsPage();
+        }
+      };
+    } catch (e) {
+      console.log('BroadcastChannel non supporté');
+    }
+
+    // Nettoyer les listeners
+    return () => {
+      window.removeEventListener('pageUpdated', handlePageUpdate as EventListener);
+      window.removeEventListener('cacheInvalidated', handleCacheInvalidated);
+      channel?.close();
+    };
   }, []);
 
   if (loading) {
