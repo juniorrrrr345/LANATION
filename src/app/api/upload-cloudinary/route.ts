@@ -126,33 +126,34 @@ export async function POST(request: NextRequest) {
         uploadStream.end(buffer);
       });
 
-             const result = uploadResult as any;
-    
-    const response = {
-      url: result.secure_url,
-      public_id: result.public_id,
-      type: isVideo ? 'video' : 'image',
-      filename: file.name,
-      size: file.size,
-      width: result.width,
-      height: result.height,
-      duration: result.duration || null, // Pour les vidéos
-      format: result.format
-    };
+      const result = uploadResult as any;
+      
+      const response = {
+        url: result.secure_url,
+        public_id: result.public_id,
+        type: isVideo ? 'video' : 'image',
+        filename: file.name,
+        size: file.size,
+        width: result.width,
+        height: result.height,
+        duration: result.duration || null, // Pour les vidéos
+        format: result.format
+      };
 
-    console.log('🎯 Upload terminé:', {
-      url: result.secure_url,
-      type: response.type,
-      size: Math.round(file.size / 1024 / 1024 * 100) / 100 + 'MB'
-    });
+      console.log('🎯 Upload terminé:', {
+        url: result.secure_url,
+        type: response.type,
+        size: Math.round(file.size / 1024 / 1024 * 100) / 100 + 'MB'
+      });
 
-    return NextResponse.json(response);
+      return NextResponse.json(response);
 
-  } catch (error) {
-    console.error('❌ Erreur upload Cloudinary:', error);
-    return NextResponse.json({ 
-      error: 'Erreur lors de l\'upload',
-      details: error instanceof Error ? error.message : 'Erreur inconnue'
-    }, { status: 500 });
+    } catch (error) {
+      console.error('❌ Erreur upload Cloudinary:', error);
+      return NextResponse.json({ 
+        error: 'Erreur lors de l\'upload',
+        details: error instanceof Error ? error.message : 'Erreur inconnue'
+      }, { status: 500 });
+    }
   }
 }
