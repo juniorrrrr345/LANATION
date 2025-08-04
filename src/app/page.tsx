@@ -286,7 +286,7 @@ export default function HomePage() {
                   onFarmChange={setSelectedFarm}
                 />
                 
-                <main className="pt-4 pb-24 sm:pb-28 px-3 sm:px-4 lg:px-6 xl:px-8 max-w-7xl mx-auto">
+                <main className="pt-4 pb-32 sm:pb-36 lg:pb-40 px-3 sm:px-4 lg:px-6 xl:px-8 max-w-7xl mx-auto">
 
                 {/* Affichage des produits */}
                 {filteredProducts.length === 0 && products.length > 0 ? (

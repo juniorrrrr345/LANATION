@@ -480,18 +480,18 @@ body {
 
   /* Espacement adaptatif pour le contenu avec BottomNav */
   .content-with-bottom-nav {
-    padding-bottom: 5rem; /* Mobile */
+    padding-bottom: 8rem; /* Mobile - augmenté pour les longs textes */
   }
   
   @media (min-width: 640px) {
     .content-with-bottom-nav {
-      padding-bottom: 5.5rem; /* Tablette */
+      padding-bottom: 9rem; /* Tablette - augmenté */
     }
   }
   
   @media (min-width: 1024px) {
     .content-with-bottom-nav {
-      padding-bottom: 6rem; /* PC */
+      padding-bottom: 10rem; /* PC - augmenté */
     }
   }
 
