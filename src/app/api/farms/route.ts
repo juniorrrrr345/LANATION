@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb-fixed';
-import Farm from '@/models/Farm';
+import { connectToDatabase } from '@/lib/mongodb-fixed';
 
 export async function GET() {
   try {
-    await connectDB();
-    const farms = await Farm.find({ isActive: true }).sort({ name: 1 });
+    console.log('🔍 API Farms - GET Request');
+    
+    const { db } = await connectToDatabase();
+    const farmsCollection = db.collection('farms');
+    
+    const farms = await farmsCollection.find({ isActive: { $ne: false } }).sort({ name: 1 }).toArray();
+    console.log(`🏭 Farms trouvées: ${farms.length}`);
     
     // Headers pour éviter le cache et assurer la synchronisation instantanée
     return NextResponse.json(farms, {
@@ -16,20 +20,37 @@ export async function GET() {
       }
     });
   } catch (error) {
-    console.error('Error fetching farms:', error);
-    return NextResponse.json({ error: 'Failed to fetch farms' }, { status: 500 });
+    console.error('❌ Erreur API Farms GET:', error);
+    return NextResponse.json([], {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate'
+      }
+    });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    await connectDB();
+    console.log('🔍 API Farms - POST Request');
+    
+    const { db } = await connectToDatabase();
+    const farmsCollection = db.collection('farms');
+    
     const data = await request.json();
-    const farm = new Farm(data);
-    await farm.save();
-    return NextResponse.json(farm, { status: 201 });
+    data.createdAt = new Date();
+    data.updatedAt = new Date();
+    data.isActive = data.isActive !== false; // Par défaut true
+    
+    const result = await farmsCollection.insertOne(data);
+    const newFarm = await farmsCollection.findOne({ _id: result.insertedId });
+    
+    console.log('✅ Farm créée:', newFarm);
+    return NextResponse.json(newFarm, { status: 201 });
   } catch (error) {
-    console.error('Error creating farm:', error);
-    return NextResponse.json({ error: 'Failed to create farm' }, { status: 500 });
+    console.error('❌ Erreur API Farms POST:', error);
+    return NextResponse.json({ 
+      error: 'Erreur lors de la création de la farm',
+      details: error instanceof Error ? error.message : 'Erreur inconnue'
+    }, { status: 500 });
   }
 }

@@ -26,15 +26,15 @@ export default function PagesManager() {
       console.log('📄 Chargement des pages...');
       
       const [infoRes, contactRes, questionsRes] = await Promise.all([
-        fetch('/api/pages/info').catch(err => {
+        fetch('/api/pages/info', { cache: 'no-store' }).catch(err => {
           console.error('Erreur fetch info:', err);
           return { ok: false, json: () => ({ title: 'À propos', content: '' }) };
         }),
-        fetch('/api/pages/contact').catch(err => {
+        fetch('/api/pages/contact', { cache: 'no-store' }).catch(err => {
           console.error('Erreur fetch contact:', err);
           return { ok: false, json: () => ({ title: 'Contact', content: '' }) };
         }),
-        fetch('/api/pages/questions').catch(err => {
+        fetch('/api/pages/questions', { cache: 'no-store' }).catch(err => {
           console.error('Erreur fetch questions:', err);
           return { ok: false, json: () => ({ title: 'Questions Fréquentes', content: '' }) };
         })

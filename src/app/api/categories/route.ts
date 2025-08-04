@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
-import connectDB from '@/lib/mongodb-fixed';
-import Category from '@/models/Category';
+import { connectToDatabase } from '@/lib/mongodb-fixed';
 
 export async function GET() {
   try {
-    await connectDB();
-    const categories = await Category.find({ isActive: true }).sort({ order: 1, name: 1 });
+    console.log('🔍 API Categories - GET Request');
+    
+    const { db } = await connectToDatabase();
+    const categoriesCollection = db.collection('categories');
+    
+    const categories = await categoriesCollection.find({ isActive: { $ne: false } }).sort({ order: 1, name: 1 }).toArray();
+    console.log(`📂 Catégories trouvées: ${categories.length}`);
     
     // Headers pour éviter le cache et assurer la synchronisation instantanée
     return NextResponse.json(categories, {
@@ -16,20 +20,37 @@ export async function GET() {
       }
     });
   } catch (error) {
-    console.error('Error fetching categories:', error);
-    return NextResponse.json({ error: 'Failed to fetch categories' }, { status: 500 });
+    console.error('❌ Erreur API Categories GET:', error);
+    return NextResponse.json([], {
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate'
+      }
+    });
   }
 }
 
 export async function POST(request: Request) {
   try {
-    await connectDB();
+    console.log('🔍 API Categories - POST Request');
+    
+    const { db } = await connectToDatabase();
+    const categoriesCollection = db.collection('categories');
+    
     const data = await request.json();
-    const category = new Category(data);
-    await category.save();
-    return NextResponse.json(category, { status: 201 });
+    data.createdAt = new Date();
+    data.updatedAt = new Date();
+    data.isActive = data.isActive !== false; // Par défaut true
+    
+    const result = await categoriesCollection.insertOne(data);
+    const newCategory = await categoriesCollection.findOne({ _id: result.insertedId });
+    
+    console.log('✅ Catégorie créée:', newCategory);
+    return NextResponse.json(newCategory, { status: 201 });
   } catch (error) {
-    console.error('Error creating category:', error);
-    return NextResponse.json({ error: 'Failed to create category' }, { status: 500 });
+    console.error('❌ Erreur API Categories POST:', error);
+    return NextResponse.json({ 
+      error: 'Erreur lors de la création de la catégorie',
+      details: error instanceof Error ? error.message : 'Erreur inconnue'
+    }, { status: 500 });
   }
 }
