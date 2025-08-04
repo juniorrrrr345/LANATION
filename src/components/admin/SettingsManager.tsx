@@ -236,7 +236,19 @@ export default function SettingsManager() {
               <p className="text-xs text-gray-400 mt-1">Format: https://wa.me/[code pays][numéro]</p>
             </div>
 
-
+            <div>
+              <label className="block text-sm font-medium text-gray-300 mb-2">
+                Lien pour commander
+              </label>
+              <input
+                type="url"
+                value={settings.whatsappLink}
+                onChange={(e) => updateField('whatsappLink', e.target.value)}
+                className="w-full bg-gray-800 border border-white/20 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-white"
+                placeholder="https://wa.me/33612345678?text=Bonjour"
+              />
+              <p className="text-xs text-gray-400 mt-1">Ce lien sera utilisé dans les boutons "Commander"</p>
+            </div>
           </div>
         </div>
 
