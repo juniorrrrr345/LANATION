@@ -2,9 +2,9 @@ import { v2 as cloudinary } from 'cloudinary';
 
 // Configuration Cloudinary
 const config = {
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'dagnmkw0e',
-  api_key: process.env.CLOUDINARY_API_KEY || '656387237536358',
-  api_secret: process.env.CLOUDINARY_API_SECRET || 'APJe9o-RlgaWWHq9zLQ0JztpACI',
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'dwez3etsh',
+  api_key: process.env.CLOUDINARY_API_KEY || '567536976535776',
+  api_secret: process.env.CLOUDINARY_API_SECRET || 'RRiC4Hdh50szrTQMDHSRi3kxZZE',
   secure: true,
 };
 

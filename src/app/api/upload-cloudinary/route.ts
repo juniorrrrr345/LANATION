@@ -69,65 +69,61 @@ export async function POST(request: NextRequest) {
       throw new Error('Impossible de lire le fichier');
     }
 
-    // Upload vers Cloudinary avec timeout
+    // Upload vers Cloudinary avec gestion d'erreur améliorée
     console.log('⚡ Début upload vers Cloudinary...');
-    const uploadResult = await Promise.race([
-      new Promise((resolve, reject) => {
-      // Configuration simplifiée pour éviter les erreurs
-      const uploadOptions: any = {
-        resource_type: isVideo ? 'video' : 'image',
-        folder: isVideo ? 'boutique_videos' : 'boutique_images', // Pas de slash pour éviter erreurs
-        public_id: `upload_${Date.now()}`, // Nom simplifié
-        overwrite: true
-      };
+    
+    try {
+      const uploadResult = await new Promise((resolve, reject) => {
+        // Configuration simplifiée pour éviter les erreurs
+        const uploadOptions: any = {
+          resource_type: isVideo ? 'video' : 'image',
+          folder: isVideo ? 'boutique_videos' : 'boutique_images',
+          public_id: `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          overwrite: true
+        };
 
-      // Ajouter optimisations seulement si nécessaire
-      if (!isVideo) {
-        uploadOptions.quality = 'auto';
-        uploadOptions.width = 800;
-        uploadOptions.crop = 'limit';
-      }
-
-      console.log('☁️ Options upload:', uploadOptions);
-
-      const uploadStream = cloudinary.uploader.upload_stream(
-        uploadOptions,
-        (error, result) => {
-          if (error) {
-            console.error('❌ Erreur Cloudinary détaillée:', {
-              message: error.message,
-              http_code: error.http_code,
-              name: error.name,
-              error: error
-            });
-            reject(error);
-          } else {
-            console.log('✅ Upload Cloudinary réussi:', {
-              public_id: result?.public_id,
-              url: result?.secure_url,
-              format: result?.format,
-              bytes: result?.bytes
-            });
-            resolve(result);
-          }
+        // Ajouter optimisations seulement si nécessaire
+        if (!isVideo) {
+          uploadOptions.quality = 'auto';
+          uploadOptions.width = 800;
+          uploadOptions.crop = 'limit';
         }
-      );
 
-      if (!uploadStream) {
-        console.error('❌ Impossible de créer le stream upload');
-        reject(new Error('Upload stream creation failed'));
-        return;
-      }
+        console.log('☁️ Options upload:', uploadOptions);
 
-      uploadStream.end(buffer);
-    }),
-    // Timeout de 4 minutes pour les vidéos longues
-    new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Upload timeout - 4 minutes dépassées')), 240000)
-    )
-  ]);
+        const uploadStream = cloudinary.uploader.upload_stream(
+          uploadOptions,
+          (error, result) => {
+            if (error) {
+              console.error('❌ Erreur Cloudinary détaillée:', {
+                message: error.message,
+                http_code: error.http_code,
+                name: error.name,
+                error: error
+              });
+              reject(error);
+            } else {
+              console.log('✅ Upload Cloudinary réussi:', {
+                public_id: result?.public_id,
+                url: result?.secure_url,
+                format: result?.format,
+                bytes: result?.bytes
+              });
+              resolve(result);
+            }
+          }
+        );
 
-    const result = uploadResult as any;
+        if (!uploadStream) {
+          console.error('❌ Impossible de créer le stream upload');
+          reject(new Error('Upload stream creation failed'));
+          return;
+        }
+
+        uploadStream.end(buffer);
+      });
+
+             const result = uploadResult as any;
     
     const response = {
       url: result.secure_url,
