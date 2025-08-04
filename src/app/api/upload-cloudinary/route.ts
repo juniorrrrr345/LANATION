@@ -9,6 +9,7 @@ export async function POST(request: NextRequest) {
     
     const formData = await request.formData();
     const file = formData.get('file') as File;
+    const convertToGif = formData.get('convertToGif') === 'true';
     
     if (!file) {
       return NextResponse.json({ error: 'Aucun fichier fourni' }, { status: 400 });
@@ -120,7 +121,20 @@ export async function POST(request: NextRequest) {
                         buffer.indexOf(Buffer.from('hev1')) !== -1 ||
                         buffer.indexOf(Buffer.from('HEVC')) !== -1);
         
-        if (isHEVC || fileExtension === '.mov' || uploadType === 'video/quicktime') {
+        if (convertToGif) {
+          console.log('🎬 Conversion vidéo → GIF pour Telegram');
+          // Paramètres optimisés pour GIF Telegram
+          uploadFormData.append('resource_type', 'video');
+          uploadFormData.append('format', 'gif');
+          uploadFormData.append('flags', 'animated');
+          uploadFormData.append('width', '480'); // Largeur max pour Telegram
+          uploadFormData.append('height', '480'); // Hauteur max pour Telegram
+          uploadFormData.append('crop', 'fit'); // Ajuster sans déformer
+          uploadFormData.append('quality', '80'); // Bonne qualité
+          uploadFormData.append('delay', '5'); // Délai entre frames (5 = 20fps)
+          uploadFormData.append('video_sampling', '10'); // Échantillonnage vidéo
+          uploadFormData.append('duration', '10'); // Max 10 secondes pour Telegram
+        } else if (isHEVC || fileExtension === '.mov' || uploadType === 'video/quicktime') {
           console.log('🔄 Vidéo HEVC/MOV détectée - Conversion en H.264');
           // Forcer la conversion en MP4 H.264
           uploadFormData.append('resource_type', 'video');
@@ -173,10 +187,16 @@ export async function POST(request: NextRequest) {
 
     const result = uploadResult as any;
     
+    // Déterminer le type final
+    let finalType: 'image' | 'video' | 'gif' = isVideo ? 'video' : 'image';
+    if (convertToGif && isVideo) {
+      finalType = 'gif';
+    }
+    
     return NextResponse.json({
       url: result.secure_url,
       public_id: result.public_id,
-      type: isVideo ? 'video' : 'image',
+      type: finalType,
       filename: file.name,
       size: file.size,
       format: result.format // Format final après conversion

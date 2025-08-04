@@ -2,7 +2,7 @@
 import { useState } from 'react';
 
 interface CloudinaryUploaderProps {
-  onMediaSelected: (url: string, type: 'image' | 'video') => void;
+  onMediaSelected: (url: string, type: 'image' | 'video' | 'gif') => void;
   acceptedTypes?: string;
   className?: string;
 }
@@ -15,6 +15,7 @@ export default function CloudinaryUploader({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [progress, setProgress] = useState('');
+  const [convertToGif, setConvertToGif] = useState(false);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -27,7 +28,8 @@ export default function CloudinaryUploader({
       name: file.name,
       type: file.type || 'Type non détecté',
       size: Math.round(file.size / 1024 / 1024 * 100) / 100 + 'MB',
-      extension: fileExtension
+      extension: fileExtension,
+      convertToGif: convertToGif
     });
 
     // Sur iPhone, les types peuvent être différents ou manquants
@@ -46,7 +48,7 @@ export default function CloudinaryUploader({
 
     setUploading(true);
     setError('');
-    setProgress('Préparation upload...');
+    setProgress(convertToGif && isVideo ? 'Conversion en GIF pour Telegram...' : 'Préparation upload...');
 
     try {
       // Avertissement spécial pour HEIC
@@ -60,7 +62,20 @@ export default function CloudinaryUploader({
       setProgress(isVideo ? 'Upload vidéo en cours...' : 'Upload image en cours...');
       
       const formData = new FormData();
-      formData.append('file', file);
+      
+      if (isVideo) {
+        // Pour les vidéos, on envoie le fichier directement
+        formData.append('file', file);
+      } else {
+        // Pour les images, on crée un blob
+        const blob = new Blob([file], { type: file.type || 'application/octet-stream' });
+        formData.append('file', blob, file.name);
+      }
+      
+      formData.append('fileName', file.name);
+      formData.append('fileType', file.type || '');
+      formData.append('isHeic', isHeic.toString());
+      formData.append('convertToGif', (convertToGif && isVideo).toString());
 
       const response = await fetch('/api/upload-cloudinary', {
         method: 'POST',
@@ -98,10 +113,13 @@ export default function CloudinaryUploader({
         console.log('✅ HEIC converti en JPEG avec succès');
       }
       
-      onMediaSelected(result.url, result.type);
+      // Déterminer le type final
+      const finalType = (convertToGif && isVideo) ? 'gif' : result.type;
+      onMediaSelected(result.url, finalType);
       
-      // Reset l'input
+      // Reset l'input et le toggle GIF
       event.target.value = '';
+      setConvertToGif(false);
       
     } catch (error) {
       console.error('❌ Erreur upload Cloudinary:', error);
@@ -128,39 +146,64 @@ export default function CloudinaryUploader({
 
   return (
     <div className={`cloudinary-uploader ${className}`}>
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <label className={`
-            inline-flex items-center px-4 py-2 border border-gray-600 rounded-lg 
-            bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 
-            text-white cursor-pointer transition-all duration-300 shadow-lg
-            ${uploading ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-xl'}
-          `}>
-            <input
-              type="file"
-              className="hidden"
-              accept="image/*,video/*,.jpg,.jpeg,.png,.webp,.gif,.heic,.heif,.mp4,.mov,.avi,.3gp,.3g2,.webm,.mkv"
-              onChange={handleFileSelect}
-              disabled={uploading}
-            />
-            {uploading ? (
-              <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Upload...
-              </>
-            ) : (
-              <>
-                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-                ☁️ Upload Cloudinary
-              </>
-            )}
-          </label>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <label className={`
+              inline-flex items-center px-4 py-2 border border-gray-600 rounded-lg 
+              bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 
+              text-white cursor-pointer transition-all duration-300 shadow-lg
+              ${uploading ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-xl'}
+            `}>
+              <input
+                type="file"
+                className="hidden"
+                accept="image/*,video/*,.jpg,.jpeg,.png,.webp,.gif,.heic,.heif,.mp4,.mov,.avi,.3gp,.3g2,.webm,.mkv"
+                onChange={handleFileSelect}
+                disabled={uploading}
+              />
+              {uploading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Upload...
+                </>
+              ) : (
+                <>
+                  <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  ☁️ Upload Cloudinary
+                </>
+              )}
+            </label>
+            
+            <span className="text-sm text-gray-400">
+              Images (50MB) & Vidéos (2GB) - HEIC iPhone supporté, Haute qualité et longue durée
+            </span>
+          </div>
           
-          <span className="text-sm text-gray-400">
-            Images (50MB) & Vidéos (2GB) - HEIC iPhone supporté, Haute qualité et longue durée
-          </span>
+          {/* Toggle pour conversion GIF */}
+          <div className="flex items-center gap-2 bg-gray-800 p-3 rounded-lg">
+            <label className="flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={convertToGif}
+                onChange={(e) => setConvertToGif(e.target.checked)}
+                className="sr-only"
+                disabled={uploading}
+              />
+              <div className={`relative ${uploading ? 'opacity-50' : ''}`}>
+                <div className={`block w-14 h-8 rounded-full ${convertToGif ? 'bg-green-600' : 'bg-gray-600'}`}></div>
+                <div className={`absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition ${convertToGif ? 'translate-x-6' : ''}`}></div>
+              </div>
+              <span className="ml-3 text-white font-medium">
+                Convertir vidéo en GIF pour Telegram
+              </span>
+            </label>
+            <span className="text-xs text-gray-400 ml-2">
+              (Optimisé pour Telegram - max 10s, qualité ajustée)
+            </span>
+          </div>
         </div>
 
         {progress && (
