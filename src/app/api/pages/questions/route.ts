@@ -9,15 +9,11 @@ export async function GET() {
     const questionsPage = await pagesCollection.findOne({ type: 'questions' });
     
     if (!questionsPage) {
-      // Créer une page questions par défaut
+      // Créer une page questions vide
       const defaultQuestionsPage = {
         type: 'questions',
-        title: 'Questions Fréquentes',
-        content: `
-          <h2>Questions Fréquentes</h2>
-          <p>Cette page sera configurée depuis le panel d'administration.</p>
-          <p>Vous pouvez ajouter vos questions et réponses ici.</p>
-        `,
+        title: '',
+        content: '',
         createdAt: new Date(),
         updatedAt: new Date()
       };

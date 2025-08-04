@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import SimpleEditor from './SimpleEditor';
+import SimpleTextEditor from './SimpleTextEditor';
 
 interface PageContent {
   slug: string;
@@ -210,10 +210,10 @@ export default function PagesManager() {
           <label className="block text-sm font-medium text-gray-300 mb-2">
             Contenu de la page
           </label>
-          <SimpleEditor
+          <SimpleTextEditor
             value={pageContent[activeTab].content}
             onChange={(value) => updateContent('content', value)}
-            placeholder="Tapez votre contenu ici... Utilisez les boutons ci-dessus pour formater votre texte."
+            placeholder="Tapez votre contenu ici... Utilisez les boutons ci-dessus pour insérer des éléments."
           />
         </div>
 

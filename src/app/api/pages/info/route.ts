@@ -11,15 +11,11 @@ export async function GET() {
     const infoPage = await pagesCollection.findOne({ slug: 'info' });
     
     if (!infoPage) {
-      // Créer une page info par défaut
+      // Créer une page info vide
       const defaultInfoPage = {
         slug: 'info',
-        title: 'À propos',
-        content: `
-          <h2>À propos de LANATIONDULAIT</h2>
-          <p>Cette page sera configurée depuis le panel d'administration.</p>
-          <p>Vous pouvez ajouter des informations sur votre boutique ici.</p>
-        `,
+        title: '',
+        content: '',
         createdAt: new Date(),
         updatedAt: new Date()
       };

@@ -11,15 +11,11 @@ export async function GET() {
     const contactPage = await pagesCollection.findOne({ slug: 'contact' });
     
     if (!contactPage) {
-      // Créer une page contact par défaut
+      // Créer une page contact vide
       const defaultContactPage = {
         slug: 'contact',
-        title: 'Contact',
-        content: `
-          <h2>Contactez-nous</h2>
-          <p>Cette page sera configurée depuis le panel d'administration.</p>
-          <p>Vous pouvez ajouter vos informations de contact ici.</p>
-        `,
+        title: '',
+        content: '',
         createdAt: new Date(),
         updatedAt: new Date()
       };
