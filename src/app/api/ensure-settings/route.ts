@@ -15,17 +15,17 @@ export async function GET() {
       console.log('⚠️ Aucun settings trouvé - création vide');
       // Créer des settings vides pour que l'admin puisse tout configurer
       const emptySettings = {
-        shopTitle: 'LANATION SHOP',
+        shopTitle: 'LANATIONDULAIT',
         shopSubtitle: 'Votre boutique en ligne de confiance',
-        scrollingText: 'LANATION SHOP 📲 • CONTACT • LIVRAISON RAPIDE',
+        scrollingText: 'LANATIONDULAIT • CONTACT • LIVRAISON RAPIDE',
         loadingText: 'Chargement...',
-        bannerText: 'Bienvenue chez LANATION SHOP',
+        bannerText: 'Bienvenue chez LANATIONDULAIT',
         backgroundImage: '',
         backgroundOpacity: 20,
         backgroundBlur: 5,
-        telegramLink: 'https://t.me/lanation_shop',
-        telegramOrderLink: 'https://t.me/lanation_orders',
-        email: 'contact@lanation.com',
+        telegramLink: 'https://t.me/lanationdulait',
+        telegramOrderLink: 'https://t.me/lanationdulait_orders',
+        email: 'contact@lanationdulait.com',
         address: 'Votre adresse ici',
         titleStyle: 'glow',
         createdAt: new Date(),

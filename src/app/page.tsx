@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Header from '../components/Header';
-// Redéploiement forcé - Nouveau chargement LANATION SHOP
+// Redéploiement forcé - Nouveau chargement LANATIONDULAIT
 import CategoryFilter from '../components/CategoryFilter';
 import ProductCard, { Product } from '../components/ProductCard';
 import ProductDetail from '../components/ProductDetail';
@@ -236,32 +236,32 @@ export default function HomePage() {
               </div>
               
               {/* Titre avec effet néon et ombre */}
-              <h1 className="text-5xl sm:text-7xl font-black mb-4 bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 text-transparent bg-clip-text animate-pulse drop-shadow-[0_0_30px_rgba(255,255,255,0.5)]">
-                LANATION SHOP
+              <h1 className="text-5xl sm:text-7xl font-black mb-4 text-white drop-shadow-[0_0_30px_rgba(255,255,255,0.8)]">
+                LANATIONDULAIT
               </h1>
               
               <p className="text-2xl text-white mb-8 font-semibold drop-shadow-lg">
                 Préparation en cours...
               </p>
               
-              {/* Nouvelle barre de chargement 3D */}
+              {/* Barre de chargement noir et blanc */}
               <div className="w-80 max-w-full mx-auto mb-8">
                 <div className="h-4 bg-white/20 rounded-full overflow-hidden border border-white/40 shadow-inner">
-                  <div className="h-full bg-gradient-to-r from-yellow-500 via-orange-500 to-red-600 rounded-full shadow-lg animate-loading-bar"></div>
+                  <div className="h-full bg-white rounded-full shadow-lg animate-loading-bar"></div>
                 </div>
                 <div className="mt-2 text-sm text-white font-medium drop-shadow-md">Chargement...</div>
               </div>
               
-              {/* Animation de particules */}
+              {/* Animation de points noir et blanc */}
               <div className="flex justify-center gap-3 mb-8">
-                <div className="w-3 h-3 bg-yellow-400 rounded-full animate-bounce shadow-lg shadow-yellow-400/50" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-3 h-3 bg-orange-500 rounded-full animate-bounce shadow-lg shadow-orange-500/50" style={{ animationDelay: '200ms' }}></div>
-                <div className="w-3 h-3 bg-red-500 rounded-full animate-bounce shadow-lg shadow-red-500/50" style={{ animationDelay: '400ms' }}></div>
+                <div className="w-3 h-3 bg-white rounded-full animate-bounce shadow-lg shadow-white/50" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-3 h-3 bg-white rounded-full animate-bounce shadow-lg shadow-white/50" style={{ animationDelay: '200ms' }}></div>
+                <div className="w-3 h-3 bg-white rounded-full animate-bounce shadow-lg shadow-white/50" style={{ animationDelay: '400ms' }}></div>
               </div>
               
               {/* Footer */}
               <div className="text-white text-sm font-medium drop-shadow-md">
-                <p>© 2025 LANATION SHOP</p>
+                <p>© 2025 LANATIONDULAIT</p>
               </div>
             </div>
           </div>
