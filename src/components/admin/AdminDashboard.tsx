@@ -90,7 +90,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
 
         {/* Content Desktop */}
         <main className="flex-1 ml-72">
-          <div className="p-6 min-h-screen">
+          <div className="p-6 min-h-screen pb-24">
             {renderActiveSection()}
           </div>
         </main>

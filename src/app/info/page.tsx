@@ -91,7 +91,7 @@ export default function InfoPageRoute() {
       {/* Contenu principal */}
       <div className="content-layer">
         <Header />
-        <div className="pt-12 sm:pt-14">
+        <div className="pt-12 sm:pt-14 content-with-bottom-nav">
           <div className="h-4 sm:h-6"></div>
           <InfoPage content={content} />
         </div>

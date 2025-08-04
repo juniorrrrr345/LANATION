@@ -117,9 +117,9 @@ export default function SocialPage() {
       {/* Contenu principal */}
       <div className="content-layer">
         <Header />
-        <div className="pt-12 sm:pt-14">
+        <div className="pt-12 sm:pt-14 content-with-bottom-nav">
           <div className="h-4 sm:h-6"></div>
-          <main className="pt-4 pb-24 sm:pb-28 px-3 sm:px-4 lg:px-6 xl:px-8 max-w-4xl mx-auto">
+          <main className="pt-4 px-3 sm:px-4 lg:px-6 xl:px-8 max-w-4xl mx-auto">
             {/* Titre de la page avec style boutique */}
             <div className="text-center mb-8">
               <h1 className="shop-title text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black text-white mb-3">

@@ -478,6 +478,23 @@ body {
     padding-right: var(--safe-area-inset-right);
   }
 
+  /* Espacement adaptatif pour le contenu avec BottomNav */
+  .content-with-bottom-nav {
+    padding-bottom: 5rem; /* Mobile */
+  }
+  
+  @media (min-width: 640px) {
+    .content-with-bottom-nav {
+      padding-bottom: 5.5rem; /* Tablette */
+    }
+  }
+  
+  @media (min-width: 1024px) {
+    .content-with-bottom-nav {
+      padding-bottom: 6rem; /* PC */
+    }
+  }
+
   /* Line clamp utilities */
   .line-clamp-1 {
     overflow: hidden;

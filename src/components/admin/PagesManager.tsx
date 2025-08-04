@@ -254,7 +254,7 @@ export default function PagesManager() {
         </div>
 
         {/* Bouton de sauvegarde responsive avec statut */}
-        <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center sticky bottom-0 bg-black/80 backdrop-blur-sm p-4 -mx-4 sm:mx-0 sm:p-0 sm:bg-transparent sm:backdrop-blur-none border-t sm:border-0 border-white/10">
+        <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center sticky bottom-20 sm:bottom-24 lg:relative lg:bottom-auto bg-black/90 backdrop-blur-sm p-4 -mx-4 sm:mx-0 sm:p-4 lg:p-0 lg:bg-transparent lg:backdrop-blur-none border border-white/20 sm:border lg:border-0 rounded-t-2xl lg:rounded-none shadow-lg lg:shadow-none">
           <button
             onClick={savePage}
             disabled={isSaving}
