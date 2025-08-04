@@ -94,7 +94,6 @@ export default function CloudinaryUploader({
                 type="file"
                 className="hidden"
                 accept="image/*,video/*,.jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.avi,.3gp,.webm,.mkv,image/jpeg,image/png,image/webp,video/mp4,video/quicktime,video/x-msvideo"
-                capture="environment"
                 onChange={handleFileSelect}
                 disabled={uploading}
               />
