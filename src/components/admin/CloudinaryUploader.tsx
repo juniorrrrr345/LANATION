@@ -102,8 +102,10 @@ export default function CloudinaryUploader({
         setError(errorMessage);
       } else if (errorMessage.includes('preset')) {
         setError('Erreur de configuration Cloudinary. Contactez l\'administrateur.');
+      } else if (errorMessage.includes('Invalid image file') || errorMessage.includes('Invalid video file')) {
+        setError('❌ Fichier vidéo non supporté par Cloudinary. Convertissez d\'abord la vidéo avec une app iPhone (ex: Video Converter) en MP4 H.264.');
       } else {
-        setError(`Erreur: ${errorMessage}`);
+        setError(`Erreur: ${errorMessage}. Pour les vidéos HEVC, convertissez-les d'abord en MP4.`);
       }
       
       setProgress('');

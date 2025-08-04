@@ -94,9 +94,14 @@ export async function POST(request: NextRequest) {
       // Créer un FormData pour l'upload
       const uploadFormData = new FormData();
       
-      // Ajouter le fichier avec le bon type MIME
-      const blob = new Blob([buffer], { type: uploadType });
-      uploadFormData.append('file', blob, file.name);
+      // Pour les vidéos, utiliser le fichier original pour éviter les problèmes
+      if (isVideo) {
+        uploadFormData.append('file', file);
+      } else {
+        // Pour les images, on peut utiliser le blob
+        const blob = new Blob([buffer], { type: uploadType });
+        uploadFormData.append('file', blob, file.name);
+      }
       
       // Ajouter les paramètres du preset - TRÈS IMPORTANT
       uploadFormData.append('upload_preset', 'lntdl_media');
@@ -104,6 +109,24 @@ export async function POST(request: NextRequest) {
       // Pour les fichiers HEIC, demander une conversion automatique
       if (fileExtension === '.heic' || fileExtension === '.heif') {
         uploadFormData.append('format', 'jpg');
+      }
+      
+      // Pour les vidéos HEVC/H.265, forcer la conversion en H.264
+      if (isVideo) {
+        // Détecter si c'est une vidéo HEVC
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const isHEVC = buffer.length > 8 && 
+                       (buffer.indexOf(Buffer.from('hvc1')) !== -1 || 
+                        buffer.indexOf(Buffer.from('hev1')) !== -1 ||
+                        buffer.indexOf(Buffer.from('HEVC')) !== -1);
+        
+        if (isHEVC || fileExtension === '.mov' || uploadType === 'video/quicktime') {
+          console.log('🔄 Vidéo HEVC/MOV détectée - Conversion en H.264');
+          // Forcer la conversion en MP4 H.264
+          uploadFormData.append('resource_type', 'video');
+          uploadFormData.append('format', 'mp4');
+          uploadFormData.append('video_codec', 'h264');
+        }
       }
       
       console.log('📤 Upload vers Cloudinary avec preset:', 'lntdl_media', 'Type:', uploadType);
