@@ -9,10 +9,11 @@ interface PageContent {
 }
 
 export default function PagesManager() {
-  const [activeTab, setActiveTab] = useState<'info' | 'contact'>('info');
+  const [activeTab, setActiveTab] = useState<'info' | 'contact' | 'questions'>('info');
   const [pageContent, setPageContent] = useState({
     info: { title: 'Page Info', content: '' },
-    contact: { title: 'Page Contact', content: '' }
+    contact: { title: 'Page Contact', content: '' },
+    questions: { title: 'Questions Fréquentes', content: '' }
   });
   const [isSaving, setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string>('');
@@ -24,7 +25,7 @@ export default function PagesManager() {
       setIsLoading(true);
       console.log('📄 Chargement des pages...');
       
-      const [infoRes, contactRes] = await Promise.all([
+      const [infoRes, contactRes, questionsRes] = await Promise.all([
         fetch('/api/pages/info').catch(err => {
           console.error('Erreur fetch info:', err);
           return { ok: false, json: () => ({ title: 'À propos', content: '' }) };
@@ -32,19 +33,25 @@ export default function PagesManager() {
         fetch('/api/pages/contact').catch(err => {
           console.error('Erreur fetch contact:', err);
           return { ok: false, json: () => ({ title: 'Contact', content: '' }) };
+        }),
+        fetch('/api/pages/questions').catch(err => {
+          console.error('Erreur fetch questions:', err);
+          return { ok: false, json: () => ({ title: 'Questions Fréquentes', content: '' }) };
         })
       ]);
       
-      console.log('Réponses API:', { info: infoRes.ok, contact: contactRes.ok });
+      console.log('Réponses API:', { info: infoRes.ok, contact: contactRes.ok, questions: questionsRes.ok });
       
-      const [infoData, contactData] = await Promise.all([
+      const [infoData, contactData, questionsData] = await Promise.all([
         infoRes.json(),
-        contactRes.json()
+        contactRes.json(),
+        questionsRes.json()
       ]);
       
       console.log('Données reçues:', { 
         info: infoData.title, 
-        contact: contactData.title 
+        contact: contactData.title,
+        questions: questionsData.title
       });
       
       setPageContent({
@@ -55,6 +62,10 @@ export default function PagesManager() {
         contact: {
           title: contactData.title || 'Contact',
           content: contactData.content || ''
+        },
+        questions: {
+          title: questionsData.title || 'Questions Fréquentes',
+          content: questionsData.content || ''
         }
       });
     } catch (error) {
@@ -64,7 +75,8 @@ export default function PagesManager() {
       // Définir des valeurs par défaut en cas d'erreur
       setPageContent({
         info: { title: 'À propos', content: '' },
-        contact: { title: 'Contact', content: '' }
+        contact: { title: 'Contact', content: '' },
+        questions: { title: 'Questions Fréquentes', content: '' }
       });
       
       setTimeout(() => setSaveStatus(''), 3000);
@@ -99,144 +111,133 @@ export default function PagesManager() {
         setSaveStatus('✅ Sauvegardé avec succès !');
         
         // Invalider le cache pour forcer le rechargement
-        try {
-          await fetch('/api/cache/invalidate', { method: 'POST' });
-        } catch (e) {
-          console.log('Cache invalidation skipped');
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('contentCache');
+          window.dispatchEvent(new CustomEvent('cacheUpdated'));
         }
-        
-        setTimeout(() => setSaveStatus(''), 3000);
       } else {
-        setSaveStatus(`❌ Erreur: ${result.error || 'Erreur inconnue'}`);
-        setTimeout(() => setSaveStatus(''), 5000);
+        setSaveStatus('❌ Erreur de sauvegarde');
       }
-    } catch (error: any) {
-      console.error('Erreur sauvegarde:', error);
-      setSaveStatus(`❌ Erreur: ${error.message || 'Erreur de connexion'}`);
-      setTimeout(() => setSaveStatus(''), 5000);
+    } catch (error) {
+      console.error('❌ Erreur sauvegarde:', error);
+      setSaveStatus('❌ Erreur de sauvegarde');
     } finally {
       setIsSaving(false);
+      setTimeout(() => setSaveStatus(''), 3000);
     }
   };
 
-  // Mettre à jour contenu
+  // Mettre à jour le contenu
   const updateContent = (field: 'title' | 'content', value: string) => {
     setPageContent(prev => ({
       ...prev,
-      [activeTab]: { ...prev[activeTab], [field]: value }
+      [activeTab]: {
+        ...prev[activeTab],
+        [field]: value
+      }
     }));
   };
 
+  // Charger au montage
   useEffect(() => {
     loadPages();
-    
-    // Timeout de sécurité pour éviter le chargement infini
-    const timeout = setTimeout(() => {
-      if (isLoading) {
-        console.warn('⚠️ Chargement trop long, forçage arrêt');
-        setIsLoading(false);
-        setSaveStatus('⚠️ Chargement interrompu');
-        setTimeout(() => setSaveStatus(''), 3000);
-      }
-    }, 10000); // 10 secondes max
-    
-    return () => clearTimeout(timeout);
   }, []);
-
-  const currentPage = pageContent[activeTab];
 
   if (isLoading) {
     return (
-      <div className="bg-black/50 backdrop-blur-md rounded-lg p-6 border border-white/10">
+      <div className="space-y-6">
         <div className="text-center py-8">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto"></div>
-          <p className="text-gray-400 mt-4">Chargement des pages...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mx-auto"></div>
+          <p className="text-gray-400 mt-2">Chargement des pages...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-black/50 backdrop-blur-md rounded-lg p-6 border border-white/10">
-      <h2 className="text-2xl font-bold text-white mb-6">📄 Gestion des Pages</h2>
-
+    <div className="space-y-6">
       {/* Onglets */}
-      <div className="flex space-x-4 mb-6 border-b border-white/20">
+      <div className="flex space-x-2">
         <button
           onClick={() => setActiveTab('info')}
-          className={`pb-3 px-1 text-sm font-medium transition-colors ${
-            activeTab === 'info' ? 'text-white border-b-2 border-white' : 'text-gray-400 hover:text-white'
+          className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+            activeTab === 'info'
+              ? 'bg-white/20 text-white border border-white/30'
+              : 'bg-gray-800/50 text-gray-300 hover:bg-white/10 hover:text-white'
           }`}
         >
-          📖 Page Info
+          Info
+        </button>
+        <button
+          onClick={() => setActiveTab('questions')}
+          className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+            activeTab === 'questions'
+              ? 'bg-white/20 text-white border border-white/30'
+              : 'bg-gray-800/50 text-gray-300 hover:bg-white/10 hover:text-white'
+          }`}
+        >
+          Questions
         </button>
         <button
           onClick={() => setActiveTab('contact')}
-          className={`pb-3 px-1 text-sm font-medium transition-colors ${
-            activeTab === 'contact' ? 'text-white border-b-2 border-white' : 'text-gray-400 hover:text-white'
+          className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${
+            activeTab === 'contact'
+              ? 'bg-white/20 text-white border border-white/30'
+              : 'bg-gray-800/50 text-gray-300 hover:bg-white/10 hover:text-white'
           }`}
         >
-          📞 Page Contact
+          Contact
         </button>
       </div>
 
-      {/* Formulaire */}
+      {/* Contenu de la page */}
       <div className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-white mb-2">Titre</label>
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Titre de la page
+          </label>
           <input
             type="text"
-            value={currentPage.title}
+            value={pageContent[activeTab].title}
             onChange={(e) => updateContent('title', e.target.value)}
-            className="w-full px-4 py-3 bg-black/50 border border-white/20 rounded-lg text-white focus:border-white/40 focus:outline-none transition-colors"
+            className="w-full bg-gray-800 border border-white/20 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-white"
             placeholder="Titre de la page"
           />
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-white mb-2">
-            Contenu (Markdown supporté)
+          <label className="block text-sm font-medium text-gray-300 mb-2">
+            Contenu (HTML autorisé)
           </label>
-          <div className="text-xs text-gray-400 mb-2">
-            Utilisez # pour les titres, ** pour le gras, * pour l'italique, - pour les listes
-          </div>
           <textarea
-            value={currentPage.content}
+            value={pageContent[activeTab].content}
             onChange={(e) => updateContent('content', e.target.value)}
             rows={15}
-            className="w-full px-4 py-3 bg-black/50 border border-white/20 rounded-lg text-white font-mono text-sm focus:border-white/40 focus:outline-none transition-colors"
-            placeholder="Contenu de la page..."
+            className="w-full bg-gray-800 border border-white/20 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-white resize-y"
+            placeholder="Contenu de la page (HTML autorisé)"
           />
+          <p className="text-xs text-gray-400 mt-1">
+            Vous pouvez utiliser du HTML pour formater le texte (ex: &lt;h2&gt;, &lt;p&gt;, &lt;strong&gt;, etc.)
+          </p>
         </div>
 
-        {/* Status et Actions */}
-        <div className="flex items-center justify-between pt-4">
-          <div>
-            {saveStatus && (
-              <span className={`text-sm ${
-                saveStatus.includes('✅') ? 'text-green-400' : 
-                saveStatus.includes('❌') ? 'text-red-400' : 
-                'text-yellow-400'
-              }`}>
-                {saveStatus}
-              </span>
-            )}
-          </div>
-          <div className="flex space-x-3">
-            <button
-              onClick={loadPages}
-              className="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors"
-            >
-              🔄 Actualiser
-            </button>
-            <button
-              onClick={savePage}
-              disabled={isSaving}
-              className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {isSaving ? '💾 Sauvegarde...' : '💾 Sauvegarder'}
-            </button>
-          </div>
+        {/* Bouton de sauvegarde */}
+        <div className="flex justify-between items-center">
+          <button
+            onClick={savePage}
+            disabled={isSaving}
+            className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-medium rounded-lg transition-all duration-200 disabled:opacity-50"
+          >
+            {isSaving ? 'Sauvegarde...' : 'Sauvegarder'}
+          </button>
+          
+          {saveStatus && (
+            <span className={`text-sm ${
+              saveStatus.includes('✅') ? 'text-green-400' : 'text-red-400'
+            }`}>
+              {saveStatus}
+            </span>
+          )}
         </div>
       </div>
     </div>
