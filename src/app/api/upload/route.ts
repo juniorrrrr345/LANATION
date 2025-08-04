@@ -134,13 +134,29 @@ export async function POST(request: NextRequest) {
     const base64 = buffer.toString('base64');
     
     // Pour les fichiers HEIC/HEIF, on utilise le type MIME image/jpeg pour la compatibilité
-    const dataUrlType = (fileType === 'image/heic' || fileType === 'image/heif') ? 'image/jpeg' : fileType;
+    // Vérifier que le type MIME est valide
+    let dataUrlType = (fileType === 'image/heic' || fileType === 'image/heif') ? 'image/jpeg' : fileType;
+    
+    // S'assurer que le type MIME est valide et non vide
+    if (!dataUrlType || dataUrlType === 'application/octet-stream' || dataUrlType === '') {
+      dataUrlType = isVideo ? 'video/mp4' : 'image/jpeg';
+      console.log('⚠️ Type MIME invalide, utilisation du type par défaut:', dataUrlType);
+    }
     
     // Validation du base64
     if (!base64 || base64.length === 0) {
       console.error('❌ Erreur: base64 vide');
       return NextResponse.json({ 
         error: 'Erreur lors de la conversion du fichier. Essayez avec un format différent ou utilisez Cloudinary.' 
+      }, { status: 400 });
+    }
+    
+    // Vérifier que le base64 est valide (ne contient que des caractères autorisés)
+    const base64Regex = /^[A-Za-z0-9+/]*={0,2}$/;
+    if (!base64Regex.test(base64)) {
+      console.error('❌ Base64 invalide - caractères non autorisés détectés');
+      return NextResponse.json({ 
+        error: 'Fichier corrompu ou format non supporté. Utilisez Cloudinary pour ce fichier.' 
       }, { status: 400 });
     }
     
@@ -168,7 +184,8 @@ export async function POST(request: NextRequest) {
       base64Size: base64.length,
       dataUrlSize: dataUrl.length,
       ratio: Math.round(dataUrl.length / file.size * 100) / 100,
-      base64Preview: base64.substring(0, 100) + '...'
+      base64Preview: base64.substring(0, 100) + '...',
+      dataUrlPreview: dataUrl.substring(0, 50) + '...'
     });
     
     // Vérifier que la taille finale ne dépasse pas la limite MongoDB (16MB par document)
