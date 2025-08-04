@@ -32,7 +32,7 @@ export default function MediaUploader({
     const isHeic = fileName.endsWith('.heic') || fileName.endsWith('.heif');
     
     // Vérifier la taille selon le type de fichier
-    const actualMaxSize = isVideo ? 15 : 5; // 15MB pour vidéos (max MongoDB), 5MB pour images
+    const actualMaxSize = isVideo ? 25 : 5; // 25MB pour vidéos, 5MB pour images
     const maxBytes = actualMaxSize * 1024 * 1024;
     
     if (file.size > maxBytes) {
@@ -148,9 +148,9 @@ export default function MediaUploader({
         
         <span className="text-sm text-gray-400">
                       {acceptedTypes.includes('video') && acceptedTypes.includes('image') 
-              ? 'Images (5MB) & Vidéos (15MB) - Formats iPhone supportés'
-            : acceptedTypes.includes('video')
-                          ? 'Vidéos (max 15MB) - MP4, MOV, WebM, AVI, 3GP'
+                            ? 'Images (5MB) & Vidéos (25MB) - Formats iPhone supportés'
+              : acceptedTypes.includes('video')
+                            ? 'Vidéos (max 25MB) - MP4, MOV, WebM, AVI, 3GP'
               : 'Images (max 5MB) - JPG, PNG, WebP, HEIC'
           }
         </span>

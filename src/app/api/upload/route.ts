@@ -99,8 +99,10 @@ export async function POST(request: NextRequest) {
     // MongoDB a une limite de 16MB par document
     // Une vidéo en base64 fait ~33% plus gros que le fichier original
     // Augmentation de la limite pour vidéos de bonne qualité
-    const maxSize = isVideo ? 15 * 1024 * 1024 : 5 * 1024 * 1024; // 15MB pour vidéos (max safe pour MongoDB), 5MB pour images
-    const maxSizeText = isVideo ? '15MB' : '5MB';
+    // MongoDB limite à 16MB par document, mais en base64 ça prend ~33% de plus
+    // Donc on peut aller jusqu'à ~12MB de fichier original = 16MB en base64
+    const maxSize = isVideo ? 25 * 1024 * 1024 : 5 * 1024 * 1024; // 25MB pour vidéos, 5MB pour images
+    const maxSizeText = isVideo ? '25MB' : '5MB';
     
     if (file.size > maxSize) {
       console.log('❌ Fichier trop gros:', file.size, 'max:', maxSize);
@@ -169,8 +171,9 @@ export async function POST(request: NextRequest) {
       base64Preview: base64.substring(0, 100) + '...'
     });
     
-    // Vérifier que la taille finale ne dépasse pas 15MB (limite MongoDB)
-    const maxBase64Size = 15 * 1024 * 1024;
+    // Vérifier que la taille finale ne dépasse pas la limite MongoDB (16MB par document)
+    // On met 15.5MB pour avoir une petite marge
+    const maxBase64Size = 15.5 * 1024 * 1024;
     if (dataUrl.length > maxBase64Size) {
       console.log('❌ Data URL trop volumineux:', dataUrl.length);
       return NextResponse.json({ 
