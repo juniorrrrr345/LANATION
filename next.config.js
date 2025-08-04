@@ -6,10 +6,28 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
-  // Configuration optimisée pour Vercel
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        pathname: '/**',
+      },
+    ],
+  },
+  // Configuration pour les gros uploads
+  api: {
+    bodyParser: {
+      sizeLimit: '100mb',
+    },
+    responseLimit: '100mb',
+  },
   experimental: {
-    serverComponentsExternalPackages: ['mongoose']
-  }
-}
+    serverComponentsExternalPackages: ['mongoose'],
+    serverActions: {
+      bodySizeLimit: '100mb',
+    },
+  },
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;
