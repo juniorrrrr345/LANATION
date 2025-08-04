@@ -1,0 +1,20 @@
+{
+  "name": "mongodb-connection-example",
+  "version": "1.0.0",
+  "description": "Example MongoDB connection using environment variables",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js"
+  },
+  "dependencies": {
+    "mongodb": "^6.3.0",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  },
+  "keywords": ["mongodb", "database", "connection"],
+  "author": "",
+  "license": "MIT"
+}
