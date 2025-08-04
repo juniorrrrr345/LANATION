@@ -69,11 +69,11 @@ export async function POST(request: NextRequest) {
     const videoExtensions = ['.mp4', '.mov', '.avi', '.3gp', '.3g2', '.webm', '.mkv'];
     const isVideo = videoExtensions.includes(fileExtension) || fileType.startsWith('video/');
 
-    const maxSize = isVideo ? 500 * 1024 * 1024 : 10 * 1024 * 1024;
+    const maxSize = isVideo ? 1024 * 1024 * 1024 : 10 * 1024 * 1024; // 1GB pour vidéos, 10MB pour images
     
     if (file.size > maxSize) {
       return NextResponse.json({ 
-        error: `Fichier trop volumineux: ${Math.round(file.size / 1024 / 1024)}MB. Maximum ${isVideo ? '500MB' : '10MB'}` 
+        error: `Fichier trop volumineux: ${Math.round(file.size / 1024 / 1024)}MB. Maximum ${isVideo ? '1GB' : '10MB'}` 
       }, { status: 400 });
     }
 

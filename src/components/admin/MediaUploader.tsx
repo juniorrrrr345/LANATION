@@ -30,7 +30,7 @@ export default function MediaUploader({
     const isHeic = fileName.endsWith('.heic') || fileName.endsWith('.heif');
     
     // Vérifier la taille selon le type de fichier
-    const actualMaxSize = isVideo ? 10 : 5; // 10MB pour vidéos, 5MB pour images
+    const actualMaxSize = isVideo ? 12 : 5; // 12MB pour vidéos, 5MB pour images
     const maxBytes = actualMaxSize * 1024 * 1024;
     
     if (file.size > maxBytes) {
@@ -39,9 +39,8 @@ export default function MediaUploader({
     }
     
     // Vérification supplémentaire pour éviter les erreurs MongoDB
-    if (isVideo && file.size > 8 * 1024 * 1024) {
-      setError(`Vidéo trop volumineuse (${Math.round(file.size / 1024 / 1024)}MB). Utilisez l'upload Cloudinary pour les vidéos > 8MB.`);
-      return;
+    if (isVideo && file.size > 10 * 1024 * 1024) {
+      console.log('⚠️ Vidéo proche de la limite MongoDB, risque d\'erreur possible');
     }
     
     // Avertissement pour les fichiers HEIC
@@ -133,9 +132,9 @@ export default function MediaUploader({
         
         <span className="text-sm text-gray-400">
           {acceptedTypes.includes('video') && acceptedTypes.includes('image') 
-            ? 'Images (5MB) & Vidéos (10MB) - Formats iPhone supportés'
+            ? 'Images (5MB) & Vidéos (12MB) - Formats iPhone supportés'
             : acceptedTypes.includes('video')
-            ? 'Vidéos (max 10MB) - MP4, MOV, WebM'
+            ? 'Vidéos (max 12MB) - MP4, MOV, WebM'
             : 'Images (max 5MB) - JPG, PNG, WebP, HEIC'
           }
         </span>
