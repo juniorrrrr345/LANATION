@@ -9,7 +9,7 @@ interface CloudinaryUploaderProps {
 
 export default function CloudinaryUploader({ 
   onMediaSelected, 
-  acceptedTypes = "image/*,video/*,.mov,.avi,.3gp",
+  acceptedTypes = "image/*,video/*,.jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.avi,.3gp,.webm,.mkv",
   className = ""
 }: CloudinaryUploaderProps) {
   const [uploading, setUploading] = useState(false);
@@ -83,13 +83,13 @@ export default function CloudinaryUploader({
             text-white cursor-pointer transition-all duration-300 shadow-lg
             ${uploading ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-xl'}
           `}>
-            <input
-              type="file"
-              className="hidden"
-              accept={acceptedTypes}
-              onChange={handleFileSelect}
-              disabled={uploading}
-            />
+                          <input
+                type="file"
+                className="hidden"
+                accept="image/*,video/*,.jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.avi,.3gp,.webm,.mkv"
+                onChange={handleFileSelect}
+                disabled={uploading}
+              />
             {uploading ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>

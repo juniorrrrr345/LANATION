@@ -30,24 +30,20 @@ export async function POST(request: NextRequest) {
       size: Math.round(file.size / 1024 / 1024 * 100) / 100 + 'MB'
     });
 
-    // Vérifier le type de fichier de manière plus permissive
-    const isVideo = file.type.startsWith('video/');
-    const isImage = file.type.startsWith('image/');
+    // Validation simplifiée - accepter tous les fichiers avec extensions valides
+    const validExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.gif', '.mp4', '.mov', '.avi', '.3gp', '.webm', '.mkv'];
+    const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+    const hasValidExtension = validExtensions.includes(fileExtension);
     
-    if (!isVideo && !isImage) {
-      console.log('⚠️ Type de fichier non reconnu:', file.type);
-      // Accepter quand même si c'est un fichier avec extension valide
-      const validExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.mp4', '.mov', '.avi', '.3gp', '.webm'];
-      const hasValidExtension = validExtensions.some(ext => 
-        file.name.toLowerCase().endsWith(ext)
-      );
-      
-      if (!hasValidExtension) {
-        return NextResponse.json({ 
-          error: `Type non supporté: ${file.type}. Extensions acceptées: ${validExtensions.join(', ')}` 
-        }, { status: 400 });
-      }
+    if (!hasValidExtension) {
+      return NextResponse.json({ 
+        error: `Extension non supportée: ${fileExtension}. Extensions acceptées: ${validExtensions.join(', ')}` 
+      }, { status: 400 });
     }
+    
+    // Déterminer si c'est une vidéo basé sur l'extension
+    const videoExtensions = ['.mp4', '.mov', '.avi', '.3gp', '.webm', '.mkv'];
+    const isVideo = videoExtensions.includes(fileExtension);
 
     const maxSize = isVideo ? 500 * 1024 * 1024 : 10 * 1024 * 1024; // 500MB vidéo, 10MB image
     
