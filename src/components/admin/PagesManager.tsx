@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import SimpleEditor from './SimpleEditor';
 
 interface PageContent {
   slug: string;
@@ -207,18 +208,13 @@ export default function PagesManager() {
 
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-2">
-            Contenu (HTML autorisé)
+            Contenu de la page
           </label>
-          <textarea
+          <SimpleEditor
             value={pageContent[activeTab].content}
-            onChange={(e) => updateContent('content', e.target.value)}
-            rows={15}
-            className="w-full bg-gray-800 border border-white/20 text-white rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-white resize-y"
-            placeholder="Contenu de la page (HTML autorisé)"
+            onChange={(value) => updateContent('content', value)}
+            placeholder="Tapez votre contenu ici... Utilisez les boutons ci-dessus pour formater votre texte."
           />
-          <p className="text-xs text-gray-400 mt-1">
-            Vous pouvez utiliser du HTML pour formater le texte (ex: &lt;h2&gt;, &lt;p&gt;, &lt;strong&gt;, etc.)
-          </p>
         </div>
 
         {/* Bouton de sauvegarde */}
