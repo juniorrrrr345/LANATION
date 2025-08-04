@@ -3,10 +3,15 @@ import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
 import { connectToDatabase } from '@/lib/mongodb-fixed';
 
+// Force le rendu dynamique pour éviter le cache
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 async function getInfoContent() {
   try {
     const { db } = await connectToDatabase();
     const page = await db.collection('pages').findOne({ slug: 'info' });
+    console.log('📄 Contenu info chargé:', page?.content?.substring(0, 50) + '...');
     return page?.content || '';
   } catch (error) {
     console.error('Erreur chargement info:', error);

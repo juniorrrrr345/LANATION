@@ -1,78 +1,44 @@
-'use client';
+import QuestionsPage from '@/components/QuestionsPage';
+import Header from '@/components/Header';
+import BottomNav from '@/components/BottomNav';
+import { connectToDatabase } from '@/lib/mongodb-fixed';
 
-import { useState, useEffect } from 'react';
-import Header from '../../components/Header';
-import BottomNav from '../../components/BottomNav';
+// Force le rendu dynamique pour éviter le cache
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
-interface QuestionsPage {
-  title: string;
-  content: string;
+async function getQuestionsContent() {
+  try {
+    const { db } = await connectToDatabase();
+    const page = await db.collection('pages').findOne({ slug: 'questions' });
+    console.log('📄 Contenu questions chargé:', page?.content?.substring(0, 50) + '...');
+    return page?.content || '';
+  } catch (error) {
+    console.error('Erreur chargement questions:', error);
+    return '';
+  }
 }
 
-export default function QuestionsPage() {
-  const [questionsPage, setQuestionsPage] = useState<QuestionsPage | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const loadQuestionsPage = async () => {
-      try {
-        const response = await fetch('/api/pages/questions', { cache: 'no-store' });
-        if (response.ok) {
-          const data = await response.json();
-          setQuestionsPage(data);
-        }
-      } catch (error) {
-        console.error('Erreur chargement page questions:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadQuestionsPage();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="main-container">
-        <div className="global-overlay"></div>
-        <div className="content-layer">
-          <Header />
-          <div className="pt-12 sm:pt-14">
-            <div className="h-4 sm:h-6"></div>
-            <div className="text-center py-8">
-              <p className="text-white/60">Chargement...</p>
-            </div>
-          </div>
-          <BottomNav activeTab="questions" onTabChange={() => {}} />
-        </div>
-      </div>
-    );
-  }
+export default async function QuestionsPageRoute() {
+  // Charger le contenu côté serveur
+  const content = await getQuestionsContent();
 
   return (
     <div className="main-container">
+      {/* Overlay global toujours présent */}
       <div className="global-overlay"></div>
+      
+      {/* Contenu principal */}
       <div className="content-layer">
         <Header />
         <div className="pt-12 sm:pt-14">
           <div className="h-4 sm:h-6"></div>
-          <main className="pt-4 pb-24 sm:pb-28 px-3 sm:px-4 lg:px-6 xl:px-8 max-w-4xl mx-auto">
-            <div className="bg-white/5 backdrop-blur-sm rounded-xl p-6 border border-white/10">
-              <h1 className="text-3xl font-bold text-white mb-6">
-                {questionsPage?.title || 'Questions Fréquentes'}
-              </h1>
-              <div 
-                className="prose prose-invert max-w-none"
-                dangerouslySetInnerHTML={{ 
-                  __html: questionsPage?.content || 
-                  '<p class="text-white/60">Aucun contenu disponible pour le moment.</p>' 
-                }}
-              />
-            </div>
-          </main>
+          <QuestionsPage content={content} />
         </div>
-        <BottomNav activeTab="questions" onTabChange={() => {}} />
       </div>
+      
+      {/* BottomNav */}
+      <BottomNav />
     </div>
   );
 }
