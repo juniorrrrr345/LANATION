@@ -609,9 +609,12 @@ async function showAdminMenu(chatId) {
 async function handleInfo(chatId) {
     const infoText = config.infoText || 'ℹ️ Aucune information disponible.';
     
+    // Supprimer tous les anciens messages
+    await deleteAllMessages(chatId);
+    
     if (config.welcomeImage) {
         try {
-            await bot.sendPhoto(chatId, config.welcomeImage, {
+            const sentMsg = await bot.sendPhoto(chatId, config.welcomeImage, {
                 caption: infoText,
                 reply_markup: {
                     inline_keyboard: [[
@@ -620,30 +623,52 @@ async function handleInfo(chatId) {
                 },
                 parse_mode: 'HTML'
             });
+            activeMessages[chatId] = sentMsg.message_id;
+            addToHistory(chatId, sentMsg.message_id);
         } catch (error) {
+            // Si l'image échoue, envoyer juste le texte
             await sendOrEditMessage(chatId, infoText, {
                 inline_keyboard: [[
                     { text: '🔙 Retour', callback_data: 'back_to_menu' }
                 ]]
-            });
+            }, 'HTML', true);
         }
     } else {
         await sendOrEditMessage(chatId, infoText, {
             inline_keyboard: [[
                 { text: '🔙 Retour', callback_data: 'back_to_menu' }
             ]]
-        });
+        }, 'HTML', true);
     }
 }
 
 async function handleBackToMenu(chatId, userId) {
+    // Supprimer tous les anciens messages
+    await deleteAllMessages(chatId);
+    
     const user = await User.findOne({ userId });
     const firstName = user?.firstName || 'là';
     const welcomeText = config.welcomeMessage
         ? config.welcomeMessage.replace('{firstname}', firstName)
         : `Bienvenue ${firstName}! 👋`;
     
-    await sendOrEditMessage(chatId, welcomeText, getMainKeyboard(config));
+    // Afficher le message d'accueil avec l'image si elle existe
+    if (config.welcomeImage) {
+        try {
+            const sentMsg = await bot.sendPhoto(chatId, config.welcomeImage, {
+                caption: welcomeText,
+                reply_markup: getMainKeyboard(config),
+                parse_mode: 'HTML'
+            });
+            activeMessages[chatId] = sentMsg.message_id;
+            addToHistory(chatId, sentMsg.message_id);
+        } catch (error) {
+            // Si l'image échoue, envoyer juste le texte
+            await sendOrEditMessage(chatId, welcomeText, getMainKeyboard(config), 'HTML', true);
+        }
+    } else {
+        await sendOrEditMessage(chatId, welcomeText, getMainKeyboard(config), 'HTML', true);
+    }
 }
 
 async function handleMiniAppConfig(chatId, userId) {
