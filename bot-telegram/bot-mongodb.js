@@ -458,11 +458,11 @@ bot.on('message', async (msg) => {
             
         case 'adding_social_emoji':
             const name = userStates[userId + '_social_name'];
-            const url = userStates[userId + '_social_url'];
+            const socialUrl = userStates[userId + '_social_url'];
             const emoji = msg.text;
             
             if (!config.socialNetworks) config.socialNetworks = [];
-            config.socialNetworks.push({ name, url, emoji });
+            config.socialNetworks.push({ name, url: socialUrl, emoji });
             await saveConfig(config);
             
             delete userStates[userId];
