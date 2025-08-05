@@ -150,10 +150,7 @@ function setupBotHandlers() {
         // Sauvegarder l'utilisateur
         await saveUser(userId, msg.from);
         
-        // Supprimer le message de commande et tous les anciens messages
-        try {
-            await bot.deleteMessage(chatId, msg.message_id);
-        } catch (error) {}
+        // NE PAS supprimer la commande /start - la laisser visible
         
         // Supprimer tous les anciens messages du bot
         await deleteAllMessages(chatId);
