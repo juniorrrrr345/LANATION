@@ -6,7 +6,7 @@ services:
     branch: main
     rootDir: bot-telegram
     buildCommand: npm install
-    startCommand: node bot-mongodb.js
+    startCommand: node bot-complete.js
     envVars:
       - key: NODE_ENV
         value: production

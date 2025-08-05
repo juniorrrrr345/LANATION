@@ -2,11 +2,12 @@
   "name": "telegram-bot-lanation",
   "version": "1.0.0",
   "description": "Bot Telegram avec MongoDB pour LANATION",
-  "main": "bot-mongodb.js",
+  "main": "bot-complete.js",
   "scripts": {
-    "start": "node bot-mongodb.js",
+    "start": "node bot-complete.js",
     "webhook": "node bot-webhook.js",
-    "dev": "nodemon bot-mongodb.js"
+    "dev": "nodemon bot-complete.js",
+    "test": "node test-local.js"
   },
   "dependencies": {
     "node-telegram-bot-api": "^0.64.0",
