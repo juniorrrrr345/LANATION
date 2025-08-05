@@ -914,3 +914,16 @@ process.on('SIGTERM', async () => {
 
 // Démarrer l'initialisation
 initializeBot();
+
+// Serveur HTTP minimal pour Render (optionnel)
+const http = require('http');
+const PORT = process.env.PORT || 3000;
+
+const server = http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Bot Telegram LANATION is running! 🤖');
+});
+
+server.listen(PORT, () => {
+    console.log(`🌐 Serveur HTTP démarré sur le port ${PORT} (pour Render)`);
+});
