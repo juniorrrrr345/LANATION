@@ -832,8 +832,7 @@ async function handleStats(chatId) {
         `• Administrateurs: ${totalAdmins}\n\n` +
         `⏱️ <b>Uptime:</b>\n` +
         `${days}j ${hours}h ${minutes}min\n\n` +
-        `🤖 <b>Version:</b> 1.0.0\n` +
-        `💾 <b>Base de données:</b> MongoDB`,
+        `🤖 <b>Version:</b> 1.0.0`,
         {
             inline_keyboard: [[
                 { text: '🔙 Retour', callback_data: 'admin_back' }
