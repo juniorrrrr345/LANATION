@@ -300,10 +300,6 @@ bot.on('callback_query', async (callbackQuery) => {
             await handleInfo(chatId);
             break;
             
-        case 'social':
-            await handleSocial(chatId);
-            break;
-            
         case 'back_to_menu':
             await handleBackToMenu(chatId, userId);
             break;
@@ -685,42 +681,6 @@ async function handleInfo(chatId) {
             ]]
         });
     }
-}
-
-async function handleSocial(chatId) {
-    if (!config.socialNetworks || config.socialNetworks.length === 0) {
-        await sendOrEditMessage(chatId, 
-            '🌐 Aucun réseau social configuré.',
-            {
-                inline_keyboard: [[
-                    { text: '🔙 Retour', callback_data: 'back_to_menu' }
-                ]]
-            }
-        );
-        return;
-    }
-    
-    const keyboard = [];
-    const buttonsPerRow = config.socialButtonsPerRow || 3;
-    
-    for (let i = 0; i < config.socialNetworks.length; i += buttonsPerRow) {
-        const row = [];
-        for (let j = 0; j < buttonsPerRow && i + j < config.socialNetworks.length; j++) {
-            const network = config.socialNetworks[i + j];
-            row.push({
-                text: `${network.emoji} ${network.name}`,
-                url: network.url
-            });
-        }
-        keyboard.push(row);
-    }
-    
-    keyboard.push([{ text: '🔙 Retour', callback_data: 'back_to_menu' }]);
-    
-    await sendOrEditMessage(chatId,
-        '🌐 <b>Nos réseaux sociaux</b>\n\nCliquez sur un bouton pour nous rejoindre!',
-        { inline_keyboard: keyboard }
-    );
 }
 
 async function handleBackToMenu(chatId, userId) {

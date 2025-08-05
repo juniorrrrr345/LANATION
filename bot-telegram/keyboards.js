@@ -10,11 +10,27 @@ function getMainKeyboard(config) {
         }]);
     }
     
-    // Deuxième ligne - Boutons principaux
+    // Bouton Informations
     keyboard.push([
-        { text: 'ℹ️ Informations', callback_data: 'info' },
-        { text: '🌐 Réseaux sociaux', callback_data: 'social' }
+        { text: 'ℹ️ Informations', callback_data: 'info' }
     ]);
+    
+    // Réseaux sociaux directement dans le menu
+    if (config.socialNetworks && config.socialNetworks.length > 0) {
+        const buttonsPerRow = config.socialButtonsPerRow || 3;
+        
+        for (let i = 0; i < config.socialNetworks.length; i += buttonsPerRow) {
+            const row = [];
+            for (let j = 0; j < buttonsPerRow && i + j < config.socialNetworks.length; j++) {
+                const network = config.socialNetworks[i + j];
+                row.push({
+                    text: `${network.emoji} ${network.name}`,
+                    url: network.url
+                });
+            }
+            keyboard.push(row);
+        }
+    }
     
     return { inline_keyboard: keyboard };
 }
