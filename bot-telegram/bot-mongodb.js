@@ -16,6 +16,8 @@ if (!process.env.ADMIN_ID) {
     process.exit(1);
 }
 
+const ADMIN_ID = parseInt(process.env.ADMIN_ID);
+
 // Configuration pour éviter les conflits
 const botConfig = {
     polling: {
@@ -30,90 +32,21 @@ const botConfig = {
     filepath: false
 };
 
-// Initialiser le bot avec gestion des erreurs
+// Variables globales
 let bot;
 let retryCount = 0;
 const maxRetries = 3;
 
-async function createBot() {
-    try {
-        // Créer le bot sans polling d'abord
-        bot = new TelegramBot(process.env.BOT_TOKEN, { polling: false });
-        
-        // Supprimer le webhook s'il existe
-        try {
-            await bot.deleteWebHook();
-            console.log('✅ Webhook supprimé (si existant)');
-        } catch (error) {
-            // Ignorer l'erreur si pas de webhook
-        }
-        
-        // Attendre un peu avant de démarrer le polling
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Démarrer le polling
-        await bot.startPolling(botConfig.polling);
-        console.log('✅ Bot démarré avec succès en mode polling!');
-        
-        // Réinitialiser le compteur de retry
-        retryCount = 0;
-        
-    } catch (error) {
-        console.error('❌ Erreur lors du démarrage du bot:', error.message);
-        
-        if (error.message.includes('409') && retryCount < maxRetries) {
-            retryCount++;
-            console.log(`⏳ Nouvelle tentative dans 5 secondes... (${retryCount}/${maxRetries})`);
-            await new Promise(resolve => setTimeout(resolve, 5000));
-            return createBot();
-        } else {
-            console.error('❌ Impossible de démarrer le bot après', maxRetries, 'tentatives');
-            process.exit(1);
-        }
-    }
-}
-
-const ADMIN_ID = parseInt(process.env.ADMIN_ID);
-
 // État des utilisateurs
 const userStates = {};
 const activeMessages = {};
-const messageHistory = {}; // Pour tracker tous les messages à supprimer
+const messageHistory = {};
 
 // Configuration globale
 let config = {};
 
 // Temps de démarrage
 const botStartTime = new Date();
-
-// Connexion MongoDB et initialisation
-async function initializeBot() {
-    try {
-        console.log('🚀 Initialisation du bot...');
-        
-        // Charger la configuration
-        config = await loadConfig();
-        console.log('✅ Configuration chargée');
-        
-        // S'assurer que l'admin principal est dans la DB
-        await User.findOneAndUpdate(
-            { userId: ADMIN_ID },
-            { userId: ADMIN_ID, isAdmin: true },
-            { upsert: true }
-        );
-        
-        // Créer et démarrer le bot
-        await createBot();
-        
-        console.log('✅ Bot prêt!');
-    } catch (error) {
-        console.error('❌ Erreur initialisation:', error);
-        process.exit(1);
-    }
-}
-
-// Démarrer l'initialisation
-initializeBot();
 
 // Fonction pour sauvegarder/mettre à jour un utilisateur
 async function saveUser(userId, userInfo = {}) {
@@ -207,450 +140,476 @@ async function sendOrEditMessage(chatId, text, keyboard, parseMode = 'HTML', for
     }
 }
 
-// Commande /start
-bot.onText(/\/start/, async (msg) => {
-    const chatId = msg.chat.id;
-    const userId = msg.from.id;
-    
-    // Sauvegarder l'utilisateur
-    await saveUser(userId, msg.from);
-    
-    // Supprimer le message de commande et tous les anciens messages
-    try {
-        await bot.deleteMessage(chatId, msg.message_id);
-    } catch (error) {}
-    
-    // Supprimer tous les anciens messages du bot
-    await deleteAllMessages(chatId);
-    
-    // Message personnalisé
-    const firstName = msg.from.first_name || 'là';
-    const welcomeText = config.welcomeMessage
-        ? config.welcomeMessage.replace('{firstname}', firstName)
-        : `Bienvenue ${firstName}! 👋`;
-    
-    // Envoyer le message d'accueil
-    if (config.welcomeImage) {
-        try {
-            const sentMsg = await bot.sendPhoto(chatId, config.welcomeImage, {
-                caption: welcomeText,
-                reply_markup: getMainKeyboard(config),
-                parse_mode: 'HTML'
-            });
-            activeMessages[chatId] = sentMsg.message_id;
-            addToHistory(chatId, sentMsg.message_id);
-        } catch (error) {
-            // Si l'image échoue, envoyer juste le texte
-            await sendOrEditMessage(chatId, welcomeText, getMainKeyboard(config), 'HTML', true);
-        }
-    } else {
-        await sendOrEditMessage(chatId, welcomeText, getMainKeyboard(config), 'HTML', true);
-    }
-});
-
-// Commande /admin
-bot.onText(/\/admin/, async (msg) => {
-    const chatId = msg.chat.id;
-    const userId = msg.from.id;
-    
-    // Supprimer le message de commande
-    try {
-        await bot.deleteMessage(chatId, msg.message_id);
-    } catch (error) {}
-    
-    // Vérifier si l'utilisateur est admin
-    if (!await isAdmin(userId)) {
-        const errorMsg = await bot.sendMessage(chatId, '❌ Accès refusé. Cette commande est réservée aux administrateurs.');
-        setTimeout(() => bot.deleteMessage(chatId, errorMsg.message_id).catch(() => {}), 3000);
-        return;
-    }
-    
-    // Supprimer tous les anciens messages
-    await deleteAllMessages(chatId);
-    
-    // Statistiques
-    const totalUsers = await User.countDocuments();
-    const totalAdmins = await User.countDocuments({ isAdmin: true });
-    const uptime = Math.floor((Date.now() - botStartTime) / 1000);
-    const hours = Math.floor(uptime / 3600);
-    const minutes = Math.floor((uptime % 3600) / 60);
-    
-    const adminText = `🔧 <b>Panel d'administration</b>\n\n` +
-        `📊 <b>Statistiques:</b>\n` +
-        `• Utilisateurs: ${totalUsers}\n` +
-        `• Administrateurs: ${totalAdmins}\n` +
-        `• En ligne depuis: ${hours}h ${minutes}min\n\n` +
-        `Que souhaitez-vous faire?`;
-    
-    await sendOrEditMessage(chatId, adminText, getAdminKeyboard(), 'HTML', true);
-});
-
-// Callback pour les boutons
-bot.on('callback_query', async (callbackQuery) => {
-    const chatId = callbackQuery.message.chat.id;
-    const userId = callbackQuery.from.id;
-    const data = callbackQuery.data;
-    
-    // Répondre au callback pour enlever le "chargement"
-    await bot.answerCallbackQuery(callbackQuery.id);
-    
-    // Gestion des différents callbacks
-    switch(data) {
-        case 'info':
-            await handleInfo(chatId);
-            break;
-            
-        case 'back_to_menu':
-            await handleBackToMenu(chatId, userId);
-            break;
-            
-        case 'admin_message':
-            if (await isAdmin(userId)) {
-                userStates[userId] = 'waiting_welcome_message';
-                await sendOrEditMessage(chatId, 
-                    '📝 <b>Modifier le message d\'accueil</b>\n\n' +
-                    'Envoyez le nouveau message d\'accueil.\n' +
-                    'Vous pouvez utiliser {firstname} pour personnaliser le message.\n\n' +
-                    '<i>Envoyez /cancel pour annuler.</i>',
-                    { inline_keyboard: [[{ text: '❌ Annuler', callback_data: 'admin_back' }]] }
-                );
-            }
-            break;
-            
-        case 'admin_photo':
-            if (await isAdmin(userId)) {
-                userStates[userId] = 'waiting_welcome_photo';
-                await sendOrEditMessage(chatId,
-                    '🖼️ <b>Modifier la photo d\'accueil</b>\n\n' +
-                    'Envoyez la nouvelle photo d\'accueil.\n' +
-                    'La photo sera affichée avec le message d\'accueil.\n\n' +
-                    '<i>Envoyez /cancel pour annuler.</i>',
-                    { inline_keyboard: [[{ text: '❌ Annuler', callback_data: 'admin_back' }]] }
-                );
-            }
-            break;
-            
-        case 'admin_miniapp':
-            if (await isAdmin(userId)) {
-                await handleMiniAppConfig(chatId, userId);
-            }
-            break;
-            
-        case 'admin_social':
-            if (await isAdmin(userId)) {
-                await handleSocialConfig(chatId);
-            }
-            break;
-            
-        case 'admin_info':
-            if (await isAdmin(userId)) {
-                userStates[userId] = 'waiting_info_text';
-                await sendOrEditMessage(chatId,
-                    'ℹ️ <b>Modifier les informations</b>\n\n' +
-                    'Envoyez le nouveau texte pour la section informations.\n\n' +
-                    '<i>Envoyez /cancel pour annuler.</i>',
-                    { inline_keyboard: [[{ text: '❌ Annuler', callback_data: 'admin_back' }]] }
-                );
-            }
-            break;
-            
-        case 'admin_broadcast':
-            if (await isAdmin(userId)) {
-                await handleBroadcast(chatId, userId);
-            }
-            break;
-            
-        case 'admin_admins':
-            if (await isAdmin(userId)) {
-                await handleAdminManagement(chatId, userId);
-            }
-            break;
-            
-        case 'admin_stats':
-            if (await isAdmin(userId)) {
-                await handleStats(chatId);
-            }
-            break;
-            
-        case 'admin_back':
-            if (await isAdmin(userId)) {
-                // Nettoyer l'état et retourner au menu admin
-                delete userStates[userId];
-                bot.emit('text', { 
-                    chat: { id: chatId }, 
-                    from: { id: userId },
-                    text: '/admin'
-                });
-            }
-            break;
-            
-        // Gestion des réseaux sociaux
-        case 'social_add':
-            if (await isAdmin(userId)) {
-                userStates[userId] = 'adding_social_name';
-                await sendOrEditMessage(chatId,
-                    '➕ <b>Ajouter un réseau social</b>\n\n' +
-                    '1️⃣ Envoyez le nom du réseau (ex: Instagram)\n\n' +
-                    '<i>Envoyez /cancel pour annuler.</i>',
-                    { inline_keyboard: [[{ text: '❌ Annuler', callback_data: 'admin_social' }]] }
-                );
-            }
-            break;
-            
-        case 'social_remove':
-            if (await isAdmin(userId)) {
-                await handleSocialRemove(chatId);
-            }
-            break;
-            
-        case 'social_layout':
-            if (await isAdmin(userId)) {
-                await handleSocialLayout(chatId);
-            }
-            break;
-            
-        // Gestion des admins
-        case 'admin_add':
-            if (userId === ADMIN_ID) {
-                userStates[userId] = 'adding_admin';
-                await sendOrEditMessage(chatId,
-                    '➕ <b>Ajouter un administrateur</b>\n\n' +
-                    'Envoyez l\'ID Telegram du nouvel admin.\n' +
-                    'Pour obtenir un ID, la personne doit utiliser @userinfobot\n\n' +
-                    '<i>Envoyez /cancel pour annuler.</i>',
-                    { inline_keyboard: [[{ text: '❌ Annuler', callback_data: 'admin_admins' }]] }
-                );
-            }
-            break;
-            
-        case 'admin_remove':
-            if (userId === ADMIN_ID) {
-                await handleAdminRemove(chatId);
-            }
-            break;
-            
-        case 'broadcast_all':
-            if (await isAdmin(userId)) {
-                userStates[userId] = 'broadcast_message';
-                await sendOrEditMessage(chatId,
-                    '📢 <b>Message à tous les utilisateurs</b>\n\n' +
-                    'Envoyez le message à diffuser.\n' +
-                    'Il sera envoyé à tous les utilisateurs du bot.\n\n' +
-                    '<i>Envoyez /cancel pour annuler.</i>',
-                    { inline_keyboard: [[{ text: '❌ Annuler', callback_data: 'admin_back' }]] }
-                );
-            }
-            break;
-    }
-    
-    // Callbacks pour supprimer un réseau social
-    if (data.startsWith('remove_social_')) {
-        const index = parseInt(data.replace('remove_social_', ''));
-        if (config.socialNetworks && config.socialNetworks[index]) {
-            config.socialNetworks.splice(index, 1);
-            await saveConfig(config);
-            await sendOrEditMessage(chatId, '✅ Réseau social supprimé!', { inline_keyboard: [] });
-            setTimeout(() => handleSocialConfig(chatId), 1000);
-        }
-    }
-    
-    // Callbacks pour supprimer un admin
-    if (data.startsWith('remove_admin_')) {
-        const adminId = parseInt(data.replace('remove_admin_', ''));
-        if (userId === ADMIN_ID && adminId !== ADMIN_ID) {
-            await User.findOneAndUpdate({ userId: adminId }, { isAdmin: false });
-            await sendOrEditMessage(chatId, '✅ Administrateur supprimé!', { inline_keyboard: [] });
-            setTimeout(() => handleAdminManagement(chatId, userId), 1000);
-        }
-    }
-    
-    // Callbacks pour le layout des réseaux sociaux
-    if (data.startsWith('layout_')) {
-        const buttonsPerRow = parseInt(data.replace('layout_', ''));
-        config.socialButtonsPerRow = buttonsPerRow;
-        await saveConfig(config);
-        await sendOrEditMessage(chatId, `✅ Disposition mise à jour: ${buttonsPerRow} boutons par ligne`, { inline_keyboard: [] });
-        setTimeout(() => handleSocialConfig(chatId), 1000);
-    }
-});
-
-// Gestion des messages texte
-bot.on('message', async (msg) => {
-    if (msg.text && msg.text.startsWith('/')) return;
-    if (msg.photo) return; // Géré séparément
-    
-    const chatId = msg.chat.id;
-    const userId = msg.from.id;
-    const userState = userStates[userId];
-    
-    // Supprimer le message de l'utilisateur pour garder le chat propre
-    if (userState) {
-        try {
-            await bot.deleteMessage(chatId, msg.message_id);
-        } catch (error) {}
-    }
-    
-    // Gérer les annulations
-    if (msg.text === '/cancel') {
-        delete userStates[userId];
-        await sendOrEditMessage(chatId, '❌ Action annulée.', { inline_keyboard: [] });
-        setTimeout(() => {
-            bot.emit('text', { chat: { id: chatId }, from: { id: userId }, text: '/admin' });
-        }, 1000);
-        return;
-    }
-    
-    // Gérer les différents états
-    switch(userState) {
-        case 'waiting_welcome_message':
-            config.welcomeMessage = msg.text;
-            await saveConfig(config);
-            delete userStates[userId];
-            await sendOrEditMessage(chatId, '✅ Message d\'accueil mis à jour!', { inline_keyboard: [] });
-            setTimeout(() => {
-                bot.emit('text', { chat: { id: chatId }, from: { id: userId }, text: '/admin' });
-            }, 1000);
-            break;
-            
-        case 'waiting_info_text':
-            config.infoText = msg.text;
-            await saveConfig(config);
-            delete userStates[userId];
-            await sendOrEditMessage(chatId, '✅ Texte des informations mis à jour!', { inline_keyboard: [] });
-            setTimeout(() => {
-                bot.emit('text', { chat: { id: chatId }, from: { id: userId }, text: '/admin' });
-            }, 1000);
-            break;
-            
-        case 'config_miniapp':
-            if (msg.text.toLowerCase() === 'remove') {
-                config.miniApp = { url: null, text: '🎮 Mini Application' };
-                await saveConfig(config);
-                delete userStates[userId];
-                await sendOrEditMessage(chatId, '✅ Mini application supprimée!', { inline_keyboard: [] });
-                setTimeout(() => {
-                    bot.emit('text', { chat: { id: chatId }, from: { id: userId }, text: '/admin' });
-                }, 1000);
-            } else if (msg.text.startsWith('http')) {
-                userStates[userId] = 'config_miniapp_text';
-                userStates[userId + '_url'] = msg.text;
-                await sendOrEditMessage(chatId,
-                    '📱 <b>Configuration Mini App - Étape 2/2</b>\n\n' +
-                    'Maintenant, envoyez le texte du bouton.\n' +
-                    'Exemple: 🎮 Jouer maintenant',
-                    { inline_keyboard: [[{ text: '❌ Annuler', callback_data: 'admin_back' }]] }
-                );
-            } else {
-                await sendOrEditMessage(chatId, '❌ URL invalide. Elle doit commencer par http:// ou https://', { inline_keyboard: [] });
-            }
-            break;
-            
-        case 'config_miniapp_text':
-            const url = userStates[userId + '_url'];
-            config.miniApp = { url, text: msg.text };
-            await saveConfig(config);
-            delete userStates[userId];
-            delete userStates[userId + '_url'];
-            await sendOrEditMessage(chatId, '✅ Mini application configurée!', { inline_keyboard: [] });
-            setTimeout(() => {
-                bot.emit('text', { chat: { id: chatId }, from: { id: userId }, text: '/admin' });
-            }, 1000);
-            break;
-            
-        case 'adding_social_name':
-            userStates[userId] = 'adding_social_url';
-            userStates[userId + '_social_name'] = msg.text;
-            await sendOrEditMessage(chatId,
-                '➕ <b>Ajouter un réseau social - Étape 2/3</b>\n\n' +
-                '2️⃣ Maintenant, envoyez l\'URL complète.\n' +
-                'Exemple: https://instagram.com/votrepage',
-                { inline_keyboard: [[{ text: '❌ Annuler', callback_data: 'admin_social' }]] }
-            );
-            break;
-            
-        case 'adding_social_url':
-            userStates[userId] = 'adding_social_emoji';
-            userStates[userId + '_social_url'] = msg.text;
-            await sendOrEditMessage(chatId,
-                '➕ <b>Ajouter un réseau social - Étape 3/3</b>\n\n' +
-                '3️⃣ Enfin, envoyez un emoji pour ce réseau.\n' +
-                'Exemple: 📷 ou 🐦 ou 👍',
-                { inline_keyboard: [[{ text: '❌ Annuler', callback_data: 'admin_social' }]] }
-            );
-            break;
-            
-        case 'adding_social_emoji':
-            const name = userStates[userId + '_social_name'];
-            const socialUrl = userStates[userId + '_social_url'];
-            const emoji = msg.text;
-            
-            if (!config.socialNetworks) config.socialNetworks = [];
-            config.socialNetworks.push({ name, url: socialUrl, emoji });
-            await saveConfig(config);
-            
-            delete userStates[userId];
-            delete userStates[userId + '_social_name'];
-            delete userStates[userId + '_social_url'];
-            
-            await sendOrEditMessage(chatId, '✅ Réseau social ajouté!', { inline_keyboard: [] });
-            setTimeout(() => handleSocialConfig(chatId), 1000);
-            break;
-            
-        case 'adding_admin':
-            const newAdminId = parseInt(msg.text);
-            if (!isNaN(newAdminId)) {
-                await User.findOneAndUpdate(
-                    { userId: newAdminId },
-                    { userId: newAdminId, isAdmin: true },
-                    { upsert: true }
-                );
-                delete userStates[userId];
-                await sendOrEditMessage(chatId, '✅ Nouvel administrateur ajouté!', { inline_keyboard: [] });
-                setTimeout(() => handleAdminManagement(chatId, userId), 1000);
-            } else {
-                await sendOrEditMessage(chatId, '❌ ID invalide. Envoyez un nombre.', { inline_keyboard: [] });
-            }
-            break;
-            
-        case 'broadcast_message':
-            await handleBroadcastSend(chatId, userId, msg.text);
-            break;
-    }
-});
-
-// Gestion des photos
-bot.on('photo', async (msg) => {
-    const chatId = msg.chat.id;
-    const userId = msg.from.id;
-    const userState = userStates[userId];
-    
-    // Supprimer le message photo pour garder le chat propre
-    if (userState === 'waiting_welcome_photo') {
+// Définir tous les handlers du bot
+function setupBotHandlers() {
+    // Commande /start
+    bot.onText(/\/start/, async (msg) => {
+        const chatId = msg.chat.id;
+        const userId = msg.from.id;
+        
+        // Sauvegarder l'utilisateur
+        await saveUser(userId, msg.from);
+        
+        // Supprimer le message de commande et tous les anciens messages
         try {
             await bot.deleteMessage(chatId, msg.message_id);
         } catch (error) {}
         
+        // Supprimer tous les anciens messages du bot
+        await deleteAllMessages(chatId);
+        
+        // Message personnalisé
+        const firstName = msg.from.first_name || 'là';
+        const welcomeText = config.welcomeMessage
+            ? config.welcomeMessage.replace('{firstname}', firstName)
+            : `Bienvenue ${firstName}! 👋`;
+        
+        // Envoyer le message d'accueil
+        if (config.welcomeImage) {
+            try {
+                const sentMsg = await bot.sendPhoto(chatId, config.welcomeImage, {
+                    caption: welcomeText,
+                    reply_markup: getMainKeyboard(config),
+                    parse_mode: 'HTML'
+                });
+                activeMessages[chatId] = sentMsg.message_id;
+                addToHistory(chatId, sentMsg.message_id);
+            } catch (error) {
+                // Si l'image échoue, envoyer juste le texte
+                await sendOrEditMessage(chatId, welcomeText, getMainKeyboard(config), 'HTML', true);
+            }
+        } else {
+            await sendOrEditMessage(chatId, welcomeText, getMainKeyboard(config), 'HTML', true);
+        }
+    });
+
+    // Commande /admin
+    bot.onText(/\/admin/, async (msg) => {
+        const chatId = msg.chat.id;
+        const userId = msg.from.id;
+        
+        // Supprimer le message de commande
         try {
-            // Récupérer la photo la plus grande
-            const photo = msg.photo[msg.photo.length - 1];
-            const fileId = photo.file_id;
-            
-            // Sauvegarder l'ID de la photo (Telegram garde les photos)
-            config.welcomeImage = fileId;
+            await bot.deleteMessage(chatId, msg.message_id);
+        } catch (error) {}
+        
+        // Vérifier si l'utilisateur est admin
+        if (!await isAdmin(userId)) {
+            const errorMsg = await bot.sendMessage(chatId, '❌ Accès refusé. Cette commande est réservée aux administrateurs.');
+            setTimeout(() => bot.deleteMessage(chatId, errorMsg.message_id).catch(() => {}), 3000);
+            return;
+        }
+        
+        // Supprimer tous les anciens messages
+        await deleteAllMessages(chatId);
+        
+        // Statistiques
+        const totalUsers = await User.countDocuments();
+        const totalAdmins = await User.countDocuments({ isAdmin: true });
+        const uptime = Math.floor((Date.now() - botStartTime) / 1000);
+        const hours = Math.floor(uptime / 3600);
+        const minutes = Math.floor((uptime % 3600) / 60);
+        
+        const adminText = `🔧 <b>Panel d'administration</b>\n\n` +
+            `📊 <b>Statistiques:</b>\n` +
+            `• Utilisateurs: ${totalUsers}\n` +
+            `• Administrateurs: ${totalAdmins}\n` +
+            `• En ligne depuis: ${hours}h ${minutes}min\n\n` +
+            `Que souhaitez-vous faire?`;
+        
+        await sendOrEditMessage(chatId, adminText, getAdminKeyboard(), 'HTML', true);
+    });
+
+    // Callback pour les boutons
+    bot.on('callback_query', async (callbackQuery) => {
+        const chatId = callbackQuery.message.chat.id;
+        const userId = callbackQuery.from.id;
+        const data = callbackQuery.data;
+        
+        // Répondre au callback pour enlever le "chargement"
+        await bot.answerCallbackQuery(callbackQuery.id);
+        
+        // Gestion des différents callbacks
+        switch(data) {
+            case 'info':
+                await handleInfo(chatId);
+                break;
+                
+            case 'back_to_menu':
+                await handleBackToMenu(chatId, userId);
+                break;
+                
+            case 'admin_message':
+                if (await isAdmin(userId)) {
+                    userStates[userId] = 'waiting_welcome_message';
+                    await sendOrEditMessage(chatId, 
+                        '📝 <b>Modifier le message d\'accueil</b>\n\n' +
+                        'Envoyez le nouveau message d\'accueil.\n' +
+                        'Vous pouvez utiliser {firstname} pour personnaliser le message.\n\n' +
+                        '<i>Envoyez /cancel pour annuler.</i>',
+                        { inline_keyboard: [[{ text: '❌ Annuler', callback_data: 'admin_back' }]] }
+                    );
+                }
+                break;
+                
+            case 'admin_photo':
+                if (await isAdmin(userId)) {
+                    userStates[userId] = 'waiting_welcome_photo';
+                    await sendOrEditMessage(chatId,
+                        '🖼️ <b>Modifier la photo d\'accueil</b>\n\n' +
+                        'Envoyez la nouvelle photo d\'accueil.\n' +
+                        'La photo sera affichée avec le message d\'accueil.\n\n' +
+                        '<i>Envoyez /cancel pour annuler.</i>',
+                        { inline_keyboard: [[{ text: '❌ Annuler', callback_data: 'admin_back' }]] }
+                    );
+                }
+                break;
+                
+            case 'admin_miniapp':
+                if (await isAdmin(userId)) {
+                    await handleMiniAppConfig(chatId, userId);
+                }
+                break;
+                
+            case 'admin_social':
+                if (await isAdmin(userId)) {
+                    await handleSocialConfig(chatId);
+                }
+                break;
+                
+            case 'admin_info':
+                if (await isAdmin(userId)) {
+                    userStates[userId] = 'waiting_info_text';
+                    await sendOrEditMessage(chatId,
+                        'ℹ️ <b>Modifier les informations</b>\n\n' +
+                        'Envoyez le nouveau texte pour la section informations.\n\n' +
+                        '<i>Envoyez /cancel pour annuler.</i>',
+                        { inline_keyboard: [[{ text: '❌ Annuler', callback_data: 'admin_back' }]] }
+                    );
+                }
+                break;
+                
+            case 'admin_broadcast':
+                if (await isAdmin(userId)) {
+                    await handleBroadcast(chatId, userId);
+                }
+                break;
+                
+            case 'admin_admins':
+                if (await isAdmin(userId)) {
+                    await handleAdminManagement(chatId, userId);
+                }
+                break;
+                
+            case 'admin_stats':
+                if (await isAdmin(userId)) {
+                    await handleStats(chatId);
+                }
+                break;
+                
+            case 'admin_back':
+                if (await isAdmin(userId)) {
+                    // Nettoyer l'état et retourner au menu admin
+                    delete userStates[userId];
+                    bot.emit('text', { 
+                        chat: { id: chatId }, 
+                        from: { id: userId },
+                        text: '/admin'
+                    });
+                }
+                break;
+                
+            // Gestion des réseaux sociaux
+            case 'social_add':
+                if (await isAdmin(userId)) {
+                    userStates[userId] = 'adding_social_name';
+                    await sendOrEditMessage(chatId,
+                        '➕ <b>Ajouter un réseau social</b>\n\n' +
+                        '1️⃣ Envoyez le nom du réseau (ex: Instagram)\n\n' +
+                        '<i>Envoyez /cancel pour annuler.</i>',
+                        { inline_keyboard: [[{ text: '❌ Annuler', callback_data: 'admin_social' }]] }
+                    );
+                }
+                break;
+                
+            case 'social_remove':
+                if (await isAdmin(userId)) {
+                    await handleSocialRemove(chatId);
+                }
+                break;
+                
+            case 'social_layout':
+                if (await isAdmin(userId)) {
+                    await handleSocialLayout(chatId);
+                }
+                break;
+                
+            // Gestion des admins
+            case 'admin_add':
+                if (userId === ADMIN_ID) {
+                    userStates[userId] = 'adding_admin';
+                    await sendOrEditMessage(chatId,
+                        '➕ <b>Ajouter un administrateur</b>\n\n' +
+                        'Envoyez l\'ID Telegram du nouvel admin.\n' +
+                        'Pour obtenir un ID, la personne doit utiliser @userinfobot\n\n' +
+                        '<i>Envoyez /cancel pour annuler.</i>',
+                        { inline_keyboard: [[{ text: '❌ Annuler', callback_data: 'admin_admins' }]] }
+                    );
+                }
+                break;
+                
+            case 'admin_remove':
+                if (userId === ADMIN_ID) {
+                    await handleAdminRemove(chatId);
+                }
+                break;
+                
+            case 'broadcast_all':
+                if (await isAdmin(userId)) {
+                    userStates[userId] = 'broadcast_message';
+                    await sendOrEditMessage(chatId,
+                        '📢 <b>Message à tous les utilisateurs</b>\n\n' +
+                        'Envoyez le message à diffuser.\n' +
+                        'Il sera envoyé à tous les utilisateurs du bot.\n\n' +
+                        '<i>Envoyez /cancel pour annuler.</i>',
+                        { inline_keyboard: [[{ text: '❌ Annuler', callback_data: 'admin_back' }]] }
+                    );
+                }
+                break;
+        }
+        
+        // Callbacks pour supprimer un réseau social
+        if (data.startsWith('remove_social_')) {
+            const index = parseInt(data.replace('remove_social_', ''));
+            if (config.socialNetworks && config.socialNetworks[index]) {
+                config.socialNetworks.splice(index, 1);
+                await saveConfig(config);
+                await sendOrEditMessage(chatId, '✅ Réseau social supprimé!', { inline_keyboard: [] });
+                setTimeout(() => handleSocialConfig(chatId), 1000);
+            }
+        }
+        
+        // Callbacks pour supprimer un admin
+        if (data.startsWith('remove_admin_')) {
+            const adminId = parseInt(data.replace('remove_admin_', ''));
+            if (userId === ADMIN_ID && adminId !== ADMIN_ID) {
+                await User.findOneAndUpdate({ userId: adminId }, { isAdmin: false });
+                await sendOrEditMessage(chatId, '✅ Administrateur supprimé!', { inline_keyboard: [] });
+                setTimeout(() => handleAdminManagement(chatId, userId), 1000);
+            }
+        }
+        
+        // Callbacks pour le layout des réseaux sociaux
+        if (data.startsWith('layout_')) {
+            const buttonsPerRow = parseInt(data.replace('layout_', ''));
+            config.socialButtonsPerRow = buttonsPerRow;
             await saveConfig(config);
-            
+            await sendOrEditMessage(chatId, `✅ Disposition mise à jour: ${buttonsPerRow} boutons par ligne`, { inline_keyboard: [] });
+            setTimeout(() => handleSocialConfig(chatId), 1000);
+        }
+    });
+
+    // Gestion des messages texte
+    bot.on('message', async (msg) => {
+        if (msg.text && msg.text.startsWith('/')) return;
+        if (msg.photo) return; // Géré séparément
+        
+        const chatId = msg.chat.id;
+        const userId = msg.from.id;
+        const userState = userStates[userId];
+        
+        // Supprimer le message de l'utilisateur pour garder le chat propre
+        if (userState) {
+            try {
+                await bot.deleteMessage(chatId, msg.message_id);
+            } catch (error) {}
+        }
+        
+        // Gérer les annulations
+        if (msg.text === '/cancel') {
             delete userStates[userId];
-            await sendOrEditMessage(chatId, '✅ Photo d\'accueil mise à jour!', { inline_keyboard: [] });
-            
+            await sendOrEditMessage(chatId, '❌ Action annulée.', { inline_keyboard: [] });
             setTimeout(() => {
                 bot.emit('text', { chat: { id: chatId }, from: { id: userId }, text: '/admin' });
             }, 1000);
-        } catch (error) {
-            console.error('Erreur sauvegarde photo:', error);
-            await sendOrEditMessage(chatId, '❌ Erreur lors de la sauvegarde de la photo.', { inline_keyboard: [] });
+            return;
         }
-    }
-});
+        
+        // Gérer les différents états
+        switch(userState) {
+            case 'waiting_welcome_message':
+                config.welcomeMessage = msg.text;
+                await saveConfig(config);
+                delete userStates[userId];
+                await sendOrEditMessage(chatId, '✅ Message d\'accueil mis à jour!', { inline_keyboard: [] });
+                setTimeout(() => {
+                    bot.emit('text', { chat: { id: chatId }, from: { id: userId }, text: '/admin' });
+                }, 1000);
+                break;
+                
+            case 'waiting_info_text':
+                config.infoText = msg.text;
+                await saveConfig(config);
+                delete userStates[userId];
+                await sendOrEditMessage(chatId, '✅ Texte des informations mis à jour!', { inline_keyboard: [] });
+                setTimeout(() => {
+                    bot.emit('text', { chat: { id: chatId }, from: { id: userId }, text: '/admin' });
+                }, 1000);
+                break;
+                
+            case 'config_miniapp':
+                if (msg.text.toLowerCase() === 'remove') {
+                    config.miniApp = { url: null, text: '🎮 Mini Application' };
+                    await saveConfig(config);
+                    delete userStates[userId];
+                    await sendOrEditMessage(chatId, '✅ Mini application supprimée!', { inline_keyboard: [] });
+                    setTimeout(() => {
+                        bot.emit('text', { chat: { id: chatId }, from: { id: userId }, text: '/admin' });
+                    }, 1000);
+                } else if (msg.text.startsWith('http')) {
+                    userStates[userId] = 'config_miniapp_text';
+                    userStates[userId + '_url'] = msg.text;
+                    await sendOrEditMessage(chatId,
+                        '📱 <b>Configuration Mini App - Étape 2/2</b>\n\n' +
+                        'Maintenant, envoyez le texte du bouton.\n' +
+                        'Exemple: 🎮 Jouer maintenant',
+                        { inline_keyboard: [[{ text: '❌ Annuler', callback_data: 'admin_back' }]] }
+                    );
+                } else {
+                    await sendOrEditMessage(chatId, '❌ URL invalide. Elle doit commencer par http:// ou https://', { inline_keyboard: [] });
+                }
+                break;
+                
+            case 'config_miniapp_text':
+                const url = userStates[userId + '_url'];
+                config.miniApp = { url, text: msg.text };
+                await saveConfig(config);
+                delete userStates[userId];
+                delete userStates[userId + '_url'];
+                await sendOrEditMessage(chatId, '✅ Mini application configurée!', { inline_keyboard: [] });
+                setTimeout(() => {
+                    bot.emit('text', { chat: { id: chatId }, from: { id: userId }, text: '/admin' });
+                }, 1000);
+                break;
+                
+            case 'adding_social_name':
+                userStates[userId] = 'adding_social_url';
+                userStates[userId + '_social_name'] = msg.text;
+                await sendOrEditMessage(chatId,
+                    '➕ <b>Ajouter un réseau social - Étape 2/3</b>\n\n' +
+                    '2️⃣ Maintenant, envoyez l\'URL complète.\n' +
+                    'Exemple: https://instagram.com/votrepage',
+                    { inline_keyboard: [[{ text: '❌ Annuler', callback_data: 'admin_social' }]] }
+                );
+                break;
+                
+            case 'adding_social_url':
+                userStates[userId] = 'adding_social_emoji';
+                userStates[userId + '_social_url'] = msg.text;
+                await sendOrEditMessage(chatId,
+                    '➕ <b>Ajouter un réseau social - Étape 3/3</b>\n\n' +
+                    '3️⃣ Enfin, envoyez un emoji pour ce réseau.\n' +
+                    'Exemple: 📷 ou 🐦 ou 👍',
+                    { inline_keyboard: [[{ text: '❌ Annuler', callback_data: 'admin_social' }]] }
+                );
+                break;
+                
+            case 'adding_social_emoji':
+                const name = userStates[userId + '_social_name'];
+                const socialUrl = userStates[userId + '_social_url'];
+                const emoji = msg.text;
+                
+                if (!config.socialNetworks) config.socialNetworks = [];
+                config.socialNetworks.push({ name, url: socialUrl, emoji });
+                await saveConfig(config);
+                
+                delete userStates[userId];
+                delete userStates[userId + '_social_name'];
+                delete userStates[userId + '_social_url'];
+                
+                await sendOrEditMessage(chatId, '✅ Réseau social ajouté!', { inline_keyboard: [] });
+                setTimeout(() => handleSocialConfig(chatId), 1000);
+                break;
+                
+            case 'adding_admin':
+                const newAdminId = parseInt(msg.text);
+                if (!isNaN(newAdminId)) {
+                    await User.findOneAndUpdate(
+                        { userId: newAdminId },
+                        { userId: newAdminId, isAdmin: true },
+                        { upsert: true }
+                    );
+                    delete userStates[userId];
+                    await sendOrEditMessage(chatId, '✅ Nouvel administrateur ajouté!', { inline_keyboard: [] });
+                    setTimeout(() => handleAdminManagement(chatId, userId), 1000);
+                } else {
+                    await sendOrEditMessage(chatId, '❌ ID invalide. Envoyez un nombre.', { inline_keyboard: [] });
+                }
+                break;
+                
+            case 'broadcast_message':
+                await handleBroadcastSend(chatId, userId, msg.text);
+                break;
+        }
+    });
+
+    // Gestion des photos
+    bot.on('photo', async (msg) => {
+        const chatId = msg.chat.id;
+        const userId = msg.from.id;
+        const userState = userStates[userId];
+        
+        // Supprimer le message photo pour garder le chat propre
+        if (userState === 'waiting_welcome_photo') {
+            try {
+                await bot.deleteMessage(chatId, msg.message_id);
+            } catch (error) {}
+            
+            try {
+                // Récupérer la photo la plus grande
+                const photo = msg.photo[msg.photo.length - 1];
+                const fileId = photo.file_id;
+                
+                // Sauvegarder l'ID de la photo (Telegram garde les photos)
+                config.welcomeImage = fileId;
+                await saveConfig(config);
+                
+                delete userStates[userId];
+                await sendOrEditMessage(chatId, '✅ Photo d\'accueil mise à jour!', { inline_keyboard: [] });
+                
+                setTimeout(() => {
+                    bot.emit('text', { chat: { id: chatId }, from: { id: userId }, text: '/admin' });
+                }, 1000);
+            } catch (error) {
+                console.error('Erreur sauvegarde photo:', error);
+                await sendOrEditMessage(chatId, '❌ Erreur lors de la sauvegarde de la photo.', { inline_keyboard: [] });
+            }
+        }
+    });
+
+    // Gestion des erreurs
+    bot.on('polling_error', async (error) => {
+        console.error('Erreur polling:', error.message);
+        
+        // Si c'est une erreur 409 (conflit), essayer de redémarrer
+        if (error.message && error.message.includes('409')) {
+            console.log('⚠️ Conflit détecté, tentative de reconnexion...');
+            
+            try {
+                // Arrêter le polling actuel
+                await bot.stopPolling();
+                
+                // Attendre un peu
+                await new Promise(resolve => setTimeout(resolve, 5000));
+                
+                // Redémarrer
+                await createBot();
+            } catch (restartError) {
+                console.error('❌ Impossible de redémarrer:', restartError.message);
+            }
+        }
+    });
+}
 
 // Fonctions helper
 async function handleInfo(chatId) {
@@ -864,28 +823,73 @@ async function handleStats(chatId) {
     );
 }
 
-// Gestion des erreurs
-bot.on('polling_error', async (error) => {
-    console.error('Erreur polling:', error.message);
-    
-    // Si c'est une erreur 409 (conflit), essayer de redémarrer
-    if (error.message && error.message.includes('409')) {
-        console.log('⚠️ Conflit détecté, tentative de reconnexion...');
+// Créer et démarrer le bot
+async function createBot() {
+    try {
+        // Créer le bot sans polling d'abord
+        bot = new TelegramBot(process.env.BOT_TOKEN, { polling: false });
         
+        // Supprimer le webhook s'il existe
         try {
-            // Arrêter le polling actuel
-            await bot.stopPolling();
-            
-            // Attendre un peu
+            await bot.deleteWebHook();
+            console.log('✅ Webhook supprimé (si existant)');
+        } catch (error) {
+            // Ignorer l'erreur si pas de webhook
+        }
+        
+        // Attendre un peu avant de démarrer le polling
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Configurer tous les handlers
+        setupBotHandlers();
+        
+        // Démarrer le polling
+        await bot.startPolling(botConfig.polling);
+        console.log('✅ Bot démarré avec succès en mode polling!');
+        
+        // Réinitialiser le compteur de retry
+        retryCount = 0;
+        
+    } catch (error) {
+        console.error('❌ Erreur lors du démarrage du bot:', error.message);
+        
+        if (error.message.includes('409') && retryCount < maxRetries) {
+            retryCount++;
+            console.log(`⏳ Nouvelle tentative dans 5 secondes... (${retryCount}/${maxRetries})`);
             await new Promise(resolve => setTimeout(resolve, 5000));
-            
-            // Redémarrer
-            await createBot();
-        } catch (restartError) {
-            console.error('❌ Impossible de redémarrer:', restartError.message);
+            return createBot();
+        } else {
+            console.error('❌ Impossible de démarrer le bot après', maxRetries, 'tentatives');
+            process.exit(1);
         }
     }
-});
+}
+
+// Connexion MongoDB et initialisation
+async function initializeBot() {
+    try {
+        console.log('🚀 Initialisation du bot...');
+        
+        // Charger la configuration
+        config = await loadConfig();
+        console.log('✅ Configuration chargée');
+        
+        // S'assurer que l'admin principal est dans la DB
+        await User.findOneAndUpdate(
+            { userId: ADMIN_ID },
+            { userId: ADMIN_ID, isAdmin: true },
+            { upsert: true }
+        );
+        
+        // Créer et démarrer le bot
+        await createBot();
+        
+        console.log('✅ Bot prêt!');
+    } catch (error) {
+        console.error('❌ Erreur initialisation:', error);
+        process.exit(1);
+    }
+}
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
@@ -913,3 +917,6 @@ process.on('SIGTERM', async () => {
     }
     process.exit(0);
 });
+
+// Démarrer l'initialisation
+initializeBot();
