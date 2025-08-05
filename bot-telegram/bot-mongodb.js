@@ -16,8 +16,63 @@ if (!process.env.ADMIN_ID) {
     process.exit(1);
 }
 
-// Initialiser le bot
-const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
+// Configuration pour éviter les conflits
+const botConfig = {
+    polling: {
+        interval: 300,
+        autoStart: true,
+        params: {
+            timeout: 10,
+            allowed_updates: ['message', 'callback_query', 'inline_query']
+        }
+    },
+    onlyFirstMatch: true,
+    filepath: false
+};
+
+// Initialiser le bot avec gestion des erreurs
+let bot;
+let retryCount = 0;
+const maxRetries = 3;
+
+async function createBot() {
+    try {
+        // Créer le bot sans polling d'abord
+        bot = new TelegramBot(process.env.BOT_TOKEN, { polling: false });
+        
+        // Supprimer le webhook s'il existe
+        try {
+            await bot.deleteWebHook();
+            console.log('✅ Webhook supprimé (si existant)');
+        } catch (error) {
+            // Ignorer l'erreur si pas de webhook
+        }
+        
+        // Attendre un peu avant de démarrer le polling
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Démarrer le polling
+        await bot.startPolling(botConfig.polling);
+        console.log('✅ Bot démarré avec succès en mode polling!');
+        
+        // Réinitialiser le compteur de retry
+        retryCount = 0;
+        
+    } catch (error) {
+        console.error('❌ Erreur lors du démarrage du bot:', error.message);
+        
+        if (error.message.includes('409') && retryCount < maxRetries) {
+            retryCount++;
+            console.log(`⏳ Nouvelle tentative dans 5 secondes... (${retryCount}/${maxRetries})`);
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            return createBot();
+        } else {
+            console.error('❌ Impossible de démarrer le bot après', maxRetries, 'tentatives');
+            process.exit(1);
+        }
+    }
+}
+
 const ADMIN_ID = parseInt(process.env.ADMIN_ID);
 
 // État des utilisateurs
@@ -46,6 +101,9 @@ async function initializeBot() {
             { userId: ADMIN_ID, isAdmin: true },
             { upsert: true }
         );
+        
+        // Créer et démarrer le bot
+        await createBot();
         
         console.log('✅ Bot prêt!');
     } catch (error) {
@@ -847,21 +905,51 @@ async function handleStats(chatId) {
 }
 
 // Gestion des erreurs
-bot.on('polling_error', (error) => {
-    console.error('Erreur polling:', error);
+bot.on('polling_error', async (error) => {
+    console.error('Erreur polling:', error.message);
+    
+    // Si c'est une erreur 409 (conflit), essayer de redémarrer
+    if (error.message && error.message.includes('409')) {
+        console.log('⚠️ Conflit détecté, tentative de reconnexion...');
+        
+        try {
+            // Arrêter le polling actuel
+            await bot.stopPolling();
+            
+            // Attendre un peu
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            
+            // Redémarrer
+            await createBot();
+        } catch (restartError) {
+            console.error('❌ Impossible de redémarrer:', restartError.message);
+        }
+    }
 });
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
     console.log('\n🛑 Arrêt du bot...');
-    await mongoose.connection.close();
+    try {
+        if (bot) {
+            await bot.stopPolling();
+        }
+        await mongoose.connection.close();
+    } catch (error) {
+        console.error('Erreur lors de l\'arrêt:', error);
+    }
     process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
     console.log('\n🛑 Arrêt du bot...');
-    await mongoose.connection.close();
+    try {
+        if (bot) {
+            await bot.stopPolling();
+        }
+        await mongoose.connection.close();
+    } catch (error) {
+        console.error('Erreur lors de l\'arrêt:', error);
+    }
     process.exit(0);
 });
-
-console.log('🤖 Bot démarré en mode polling!');
