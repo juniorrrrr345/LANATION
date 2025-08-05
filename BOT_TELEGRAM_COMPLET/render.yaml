@@ -1,0 +1,20 @@
+services:
+  - type: worker
+    name: telegram-bot-lanation
+    runtime: node
+    repo: https://github.com/votre-username/votre-repo
+    branch: main
+    rootDir: bot-telegram
+    buildCommand: npm install
+    startCommand: node bot-complete.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: BOT_TOKEN
+        sync: false
+      - key: ADMIN_ID
+        sync: false
+      - key: MONGODB_URI
+        sync: false
+    healthCheckPath: /
+    autoDeploy: true
