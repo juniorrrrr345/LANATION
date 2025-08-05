@@ -203,21 +203,8 @@ function setupBotHandlers() {
         // Supprimer tous les anciens messages
         await deleteAllMessages(chatId);
         
-        // Statistiques
-        const totalUsers = await User.countDocuments();
-        const totalAdmins = await User.countDocuments({ isAdmin: true });
-        const uptime = Math.floor((Date.now() - botStartTime) / 1000);
-        const hours = Math.floor(uptime / 3600);
-        const minutes = Math.floor((uptime % 3600) / 60);
-        
-        const adminText = `🔧 <b>Panel d'administration</b>\n\n` +
-            `📊 <b>Statistiques:</b>\n` +
-            `• Utilisateurs: ${totalUsers}\n` +
-            `• Administrateurs: ${totalAdmins}\n` +
-            `• En ligne depuis: ${hours}h ${minutes}min\n\n` +
-            `Que souhaitez-vous faire?`;
-        
-        await sendOrEditMessage(chatId, adminText, getAdminKeyboard(), 'HTML', true);
+        // Afficher le menu admin
+        await showAdminMenu(chatId);
     });
 
     // Callback pour les boutons
@@ -311,11 +298,12 @@ function setupBotHandlers() {
                 if (await isAdmin(userId)) {
                     // Nettoyer l'état et retourner au menu admin
                     delete userStates[userId];
-                    bot.emit('text', { 
-                        chat: { id: chatId }, 
-                        from: { id: userId },
-                        text: '/admin'
-                    });
+                    
+                    // Supprimer tous les anciens messages
+                    await deleteAllMessages(chatId);
+                    
+                    // Afficher le menu admin
+                    await showAdminMenu(chatId);
                 }
                 break;
                 
@@ -429,9 +417,7 @@ function setupBotHandlers() {
         if (msg.text === '/cancel') {
             delete userStates[userId];
             await sendOrEditMessage(chatId, '❌ Action annulée.', { inline_keyboard: [] });
-            setTimeout(() => {
-                bot.emit('text', { chat: { id: chatId }, from: { id: userId }, text: '/admin' });
-            }, 1000);
+            setTimeout(() => showAdminMenu(chatId), 1000);
             return;
         }
         
@@ -442,9 +428,7 @@ function setupBotHandlers() {
                 await saveConfig(config);
                 delete userStates[userId];
                 await sendOrEditMessage(chatId, '✅ Message d\'accueil mis à jour!', { inline_keyboard: [] });
-                setTimeout(() => {
-                    bot.emit('text', { chat: { id: chatId }, from: { id: userId }, text: '/admin' });
-                }, 1000);
+                setTimeout(() => showAdminMenu(chatId), 1000);
                 break;
                 
             case 'waiting_info_text':
@@ -452,9 +436,7 @@ function setupBotHandlers() {
                 await saveConfig(config);
                 delete userStates[userId];
                 await sendOrEditMessage(chatId, '✅ Texte des informations mis à jour!', { inline_keyboard: [] });
-                setTimeout(() => {
-                    bot.emit('text', { chat: { id: chatId }, from: { id: userId }, text: '/admin' });
-                }, 1000);
+                setTimeout(() => showAdminMenu(chatId), 1000);
                 break;
                 
             case 'config_miniapp':
@@ -463,9 +445,7 @@ function setupBotHandlers() {
                     await saveConfig(config);
                     delete userStates[userId];
                     await sendOrEditMessage(chatId, '✅ Mini application supprimée!', { inline_keyboard: [] });
-                    setTimeout(() => {
-                        bot.emit('text', { chat: { id: chatId }, from: { id: userId }, text: '/admin' });
-                    }, 1000);
+                    setTimeout(() => showAdminMenu(chatId), 1000);
                 } else if (msg.text.startsWith('http')) {
                     userStates[userId] = 'config_miniapp_text';
                     userStates[userId + '_url'] = msg.text;
@@ -487,9 +467,7 @@ function setupBotHandlers() {
                 delete userStates[userId];
                 delete userStates[userId + '_url'];
                 await sendOrEditMessage(chatId, '✅ Mini application configurée!', { inline_keyboard: [] });
-                setTimeout(() => {
-                    bot.emit('text', { chat: { id: chatId }, from: { id: userId }, text: '/admin' });
-                }, 1000);
+                setTimeout(() => showAdminMenu(chatId), 1000);
                 break;
                 
             case 'adding_social_name':
@@ -577,9 +555,7 @@ function setupBotHandlers() {
                 delete userStates[userId];
                 await sendOrEditMessage(chatId, '✅ Photo d\'accueil mise à jour!', { inline_keyboard: [] });
                 
-                setTimeout(() => {
-                    bot.emit('text', { chat: { id: chatId }, from: { id: userId }, text: '/admin' });
-                }, 1000);
+                setTimeout(() => showAdminMenu(chatId), 1000);
             } catch (error) {
                 console.error('Erreur sauvegarde photo:', error);
                 await sendOrEditMessage(chatId, '❌ Erreur lors de la sauvegarde de la photo.', { inline_keyboard: [] });
@@ -612,6 +588,24 @@ function setupBotHandlers() {
 }
 
 // Fonctions helper
+async function showAdminMenu(chatId) {
+    // Afficher le menu admin
+    const totalUsers = await User.countDocuments();
+    const totalAdmins = await User.countDocuments({ isAdmin: true });
+    const uptime = Math.floor((Date.now() - botStartTime) / 1000);
+    const hours = Math.floor(uptime / 3600);
+    const minutes = Math.floor((uptime % 3600) / 60);
+    
+    const adminText = `🔧 <b>Panel d'administration</b>\n\n` +
+        `📊 <b>Statistiques:</b>\n` +
+        `• Utilisateurs: ${totalUsers}\n` +
+        `• Administrateurs: ${totalAdmins}\n` +
+        `• En ligne depuis: ${hours}h ${minutes}min\n\n` +
+        `Que souhaitez-vous faire?`;
+    
+    await sendOrEditMessage(chatId, adminText, getAdminKeyboard(), 'HTML', true);
+}
+
 async function handleInfo(chatId) {
     const infoText = config.infoText || 'ℹ️ Aucune information disponible.';
     
