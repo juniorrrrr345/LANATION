@@ -17,8 +17,6 @@ interface Product {
   isActive: boolean;
 }
 
-const defaultPriceKeys = ['3g', '5g', '10g', '25g', '50g', '100g', '200g', '500g'];
-
 export default function ProductsManager() {
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
@@ -540,46 +538,40 @@ export default function ProductsManager() {
     return result;
   };
 
-  // Fonction utilitaire pour ajouter un nouveau prix - AUCUNE LIMITE
-  const addNewPrice = (quantity: string) => {
-    const key = quantity.trim();
-    if (key) {
-      console.log(`🔄 Tentative d'ajout prix: ${key}`);
-      console.log(`📊 État actuel - priceInputs:`, Object.keys(priceInputs));
-      console.log(`📊 État actuel - quantityInputs:`, Object.keys(quantityInputs));
-      
-      // Mettre à jour les états pour l'affichage des nouvelles lignes - SANS LIMITE
-      setPriceInputs(prev => {
-        const newState = {
-          ...prev,
-          [key]: ''
-        };
-        console.log(`📝 Nouveau priceInputs:`, Object.keys(newState));
-        return newState;
-      });
-      
-      setQuantityInputs(prev => {
-        const newState = {
-          ...prev,
-          [key]: key
-        };
-        console.log(`📝 Nouveau quantityInputs:`, Object.keys(newState));
-        return newState;
-      });
-      
-      // Forcer un refresh pour que les lignes apparaissent
-      setRefreshCounter(prev => prev + 1);
-      
-      console.log(`✅ Prix ajouté: ${key}`);
-      console.log(`🔄 Refresh forcé:`, refreshCounter + 1);
-    }
+  // Fonction utilitaire pour ajouter un nouveau prix vide
+  const addNewPrice = () => {
+    // Générer une clé temporaire unique
+    const tempKey = `temp_${Date.now()}`;
+    
+    console.log(`🔄 Ajout d'une nouvelle ligne de prix vide`);
+    
+    // Mettre à jour les états pour l'affichage des nouvelles lignes
+    setPriceInputs(prev => {
+      const newState = {
+        ...prev,
+        [tempKey]: ''
+      };
+      console.log(`📝 Nouveau priceInputs:`, Object.keys(newState));
+      return newState;
+    });
+    
+    setQuantityInputs(prev => {
+      const newState = {
+        ...prev,
+        [tempKey]: ''
+      };
+      console.log(`📝 Nouveau quantityInputs:`, Object.keys(newState));
+      return newState;
+    });
+    
+    // Forcer un refresh pour que les lignes apparaissent
+    setRefreshCounter(prev => prev + 1);
+    
+    console.log(`✅ Ligne de prix vide ajoutée`);
   };
 
   const addCustomPrice = () => {
-    const customKey = prompt('Entrez la quantité (ex: 3g, 5g, 10g, 25g, 50g, 100g, 1kg, etc.):');
-    if (customKey && customKey.trim()) {
-      addNewPrice(customKey.trim());
-    }
+    addNewPrice();
   };
 
   const removePrice = (priceKey: string) => {
@@ -1122,22 +1114,19 @@ export default function ProductsManager() {
                     </button>
                   </div>
                   
-                  {/* Raccourcis pour prix courants */}
-                  <div className="flex flex-wrap gap-2">
-                    {['3g', '5g', '10g', '25g', '50g', '100g', '200g', '500g', '1kg'].map(quantity => (
-                      <button
-                        key={quantity}
-                        type="button"
-                        onClick={() => {
-                          console.log(`🎯 Clic sur bouton: ${quantity}`);
-                          addNewPrice(quantity);
-                        }}
-                        className="bg-blue-600/20 border border-blue-400/30 hover:bg-blue-600/40 text-blue-300 text-xs py-1 px-2 rounded transition-all duration-200"
-                        title={`Ajouter ${quantity}`}
-                      >
-                        + {quantity}
-                      </button>
-                    ))}
+                  {/* Bouton d'ajout rapide */}
+                  <div className="flex justify-center mt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        console.log(`🎯 Ajout d'une nouvelle ligne de prix`);
+                        addNewPrice();
+                      }}
+                      className="bg-blue-600/20 border border-blue-400/30 hover:bg-blue-600/40 text-blue-300 text-sm py-2 px-4 rounded-lg transition-all duration-200"
+                      title="Ajouter une nouvelle ligne de prix"
+                    >
+                      ➕ Ajouter une ligne de prix
+                    </button>
                   </div>
                   <button
   type="button"
@@ -1328,22 +1317,19 @@ export default function ProductsManager() {
                         </button>
                       </div>
                       
-                      {/* Raccourcis mobiles */}
-                      <div className="flex flex-wrap gap-2">
-                        {['3g', '5g', '10g', '25g', '50g', '100g', '200g', '500g', '1kg'].map(quantity => (
-                          <button
-                            key={quantity}
-                            type="button"
-                            onClick={() => {
-                              console.log(`📱 Clic mobile sur: ${quantity}`);
-                              addNewPrice(quantity);
-                            }}
-                            className="bg-blue-600/20 border border-blue-400/30 hover:bg-blue-600/40 text-blue-300 text-xs py-1 px-2 rounded transition-all duration-200"
-                            title={`Ajouter ${quantity}`}
-                          >
-                            + {quantity}
-                          </button>
-                        ))}
+                      {/* Bouton d'ajout rapide */}
+                      <div className="flex justify-center">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            console.log(`📱 Ajout d'une nouvelle ligne de prix`);
+                            addNewPrice();
+                          }}
+                          className="bg-blue-600/20 border border-blue-400/30 hover:bg-blue-600/40 text-blue-300 text-sm py-2 px-4 rounded-lg transition-all duration-200 w-full max-w-xs"
+                          title="Ajouter une nouvelle ligne de prix"
+                        >
+                          ➕ Ajouter une ligne de prix
+                        </button>
                       </div>
                     </div>
                     
