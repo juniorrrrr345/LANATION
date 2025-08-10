@@ -21,11 +21,20 @@ const defaultPriceKeys = ['3g', '5g', '10g', '25g', '50g', '100g', '200g', '500g
 
 export default function ProductsManager() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [farms, setFarms] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  
+  // Search and filter states
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedFarm, setSelectedFarm] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState<'all' | 'active' | 'inactive'>('all');
+  const [sortBy, setSortBy] = useState<'name' | 'category' | 'farm' | 'date'>('name');
+  
   const [formData, setFormData] = useState<Partial<Product>>({
     name: '',
     farm: '',
@@ -49,6 +58,59 @@ export default function ProductsManager() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Filter products whenever search/filter criteria change
+  useEffect(() => {
+    filterProducts();
+  }, [products, searchTerm, selectedCategory, selectedFarm, selectedStatus, sortBy]);
+
+  const filterProducts = () => {
+    let filtered = [...products];
+
+    // Search filter
+    if (searchTerm) {
+      filtered = filtered.filter(product =>
+        product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        product.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Category filter
+    if (selectedCategory) {
+      filtered = filtered.filter(product => product.category === selectedCategory);
+    }
+
+    // Farm filter
+    if (selectedFarm) {
+      filtered = filtered.filter(product => product.farm === selectedFarm);
+    }
+
+    // Status filter
+    if (selectedStatus !== 'all') {
+      filtered = filtered.filter(product => 
+        selectedStatus === 'active' ? product.isActive : !product.isActive
+      );
+    }
+
+    // Sort
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name);
+        case 'category':
+          return a.category.localeCompare(b.category);
+        case 'farm':
+          return a.farm.localeCompare(b.farm);
+        case 'date':
+          // Sort by _id (which contains timestamp in MongoDB ObjectId)
+          return (b._id || '').localeCompare(a._id || '');
+        default:
+          return 0;
+      }
+    });
+
+    setFilteredProducts(filtered);
+  };
 
   const loadData = async () => {
     try {
@@ -377,6 +439,28 @@ export default function ProductsManager() {
     }
   };
 
+  const handleDuplicate = (product: Product) => {
+    // Create a copy of the product without the _id
+    const duplicatedProduct = {
+      ...product,
+      name: `${product.name} (Copie)`,
+      _id: undefined
+    };
+    
+    setEditingProduct(null);
+    setFormData(duplicatedProduct);
+    setPriceInputs(Object.entries(product.prices || {}).reduce((acc, [key, value]) => {
+      acc[key] = value.toString();
+      return acc;
+    }, {} as { [key: string]: string }));
+    setQuantityInputs(Object.keys(product.prices || {}).reduce((acc, key) => {
+      acc[key] = key;
+      return acc;
+    }, {} as { [key: string]: string }));
+    setActiveTab('infos');
+    setShowModal(true);
+  };
+
   const handleDelete = async (productId: string) => {
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) return;
 
@@ -645,6 +729,78 @@ export default function ProductsManager() {
     }
   };
 
+  const exportProducts = () => {
+    const dataToExport = {
+      products: filteredProducts,
+      exportDate: new Date().toISOString(),
+      totalProducts: filteredProducts.length
+    };
+    
+    const dataStr = JSON.stringify(dataToExport, null, 2);
+    const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+    
+    const exportFileDefaultName = `hashburger_products_${new Date().toISOString().split('T')[0]}.json`;
+    
+    const linkElement = document.createElement('a');
+    linkElement.setAttribute('href', dataUri);
+    linkElement.setAttribute('download', exportFileDefaultName);
+    linkElement.click();
+  };
+
+  const importProducts = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      
+      if (!data.products || !Array.isArray(data.products)) {
+        alert('❌ Format de fichier invalide');
+        return;
+      }
+      
+      const confirmMsg = `Voulez-vous importer ${data.products.length} produit(s) ?\n\nCela ajoutera les nouveaux produits sans supprimer les existants.`;
+      if (!confirm(confirmMsg)) return;
+      
+      let successCount = 0;
+      let errorCount = 0;
+      
+      for (const product of data.products) {
+        try {
+          // Remove _id to create new products
+          const { _id, ...productData } = product;
+          
+          const response = await fetch('/api/products', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(productData),
+          });
+          
+          if (response.ok) {
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        } catch (error) {
+          errorCount++;
+        }
+      }
+      
+      alert(`✅ Import terminé!\n${successCount} produit(s) importé(s)\n${errorCount} erreur(s)`);
+      loadData();
+      
+    } catch (error) {
+      console.error('Erreur import:', error);
+      alert('❌ Erreur lors de l\'import du fichier');
+    }
+    
+    // Reset input
+    event.target.value = '';
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -671,12 +827,111 @@ export default function ProductsManager() {
             ➕ Ajouter un produit
           </button>
           <button
+            onClick={exportProducts}
+            className="bg-green-600/10 border border-green-500/20 hover:bg-green-600/20 text-green-300 font-bold py-3 px-6 rounded-xl transition-all duration-300 backdrop-blur-sm shadow-lg hover:scale-[1.02] w-full sm:w-auto"
+          >
+            📥 Exporter
+          </button>
+          <label className="bg-blue-600/10 border border-blue-500/20 hover:bg-blue-600/20 text-blue-300 font-bold py-3 px-6 rounded-xl transition-all duration-300 backdrop-blur-sm shadow-lg hover:scale-[1.02] w-full sm:w-auto cursor-pointer text-center">
+            📤 Importer
+            <input
+              type="file"
+              accept=".json"
+              onChange={importProducts}
+              className="hidden"
+            />
+          </label>
+          <button
             onClick={cleanAllPrices}
             className="bg-yellow-600/10 border border-yellow-500/20 hover:bg-yellow-600/20 text-yellow-300 font-bold py-3 px-6 rounded-xl transition-all duration-300 backdrop-blur-sm shadow-lg hover:scale-[1.02] w-full sm:w-auto"
           >
             🧹 Nettoyer les prix
           </button>
         </div>
+        </div>
+      </div>
+
+      {/* Search and Filter Section */}
+      <div className="mb-6 bg-gray-900/50 border border-white/20 rounded-xl p-4 backdrop-blur-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          {/* Search Bar */}
+          <div className="sm:col-span-2 lg:col-span-1">
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="🔍 Rechercher..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-gray-800 border border-white/20 text-white rounded-lg pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-white/50"
+              />
+              <div className="absolute left-3 top-2.5 text-gray-400">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+          {/* Category Filter */}
+          <div>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full bg-gray-800 border border-white/20 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-white/50"
+            >
+              <option value="">Toutes catégories</option>
+              {categories.map((category) => (
+                <option key={category} value={category}>{category}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Farm Filter */}
+          <div>
+            <select
+              value={selectedFarm}
+              onChange={(e) => setSelectedFarm(e.target.value)}
+              className="w-full bg-gray-800 border border-white/20 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-white/50"
+            >
+              <option value="">Toutes farms</option>
+              {farms.map((farm) => (
+                <option key={farm} value={farm}>{farm}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Status Filter */}
+          <div>
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value as 'all' | 'active' | 'inactive')}
+              className="w-full bg-gray-800 border border-white/20 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-white/50"
+            >
+              <option value="all">Tous les statuts</option>
+              <option value="active">✅ Actifs</option>
+              <option value="inactive">❌ Inactifs</option>
+            </select>
+          </div>
+
+          {/* Sort By */}
+          <div>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as 'name' | 'category' | 'farm' | 'date')}
+              className="w-full bg-gray-800 border border-white/20 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-white/50"
+            >
+              <option value="name">Trier par nom</option>
+              <option value="category">Trier par catégorie</option>
+              <option value="farm">Trier par farm</option>
+              <option value="date">Trier par date</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Results Count */}
+        <div className="mt-3 text-sm text-gray-400">
+          {filteredProducts.length} produit{filteredProducts.length > 1 ? 's' : ''} trouvé{filteredProducts.length > 1 ? 's' : ''}
+          {searchTerm || selectedCategory || selectedFarm || selectedStatus !== 'all' ? ' (filtré)' : ''}
         </div>
       </div>
 
@@ -722,7 +977,7 @@ export default function ProductsManager() {
         <>
         {/* Version mobile - Liste verticale */}
         <div className="block lg:hidden space-y-3">
-          {products.map((product) => (
+          {filteredProducts.map((product) => (
             <div key={product._id} className="bg-gray-900/50 border border-white/20 rounded-xl overflow-hidden shadow-lg backdrop-blur-sm">
               <div className="flex items-center p-3 space-x-3">
                 {/* Image compacte */}
@@ -767,14 +1022,21 @@ export default function ProductsManager() {
                 <div className="flex flex-col gap-2 flex-shrink-0">
                   <button
                     onClick={() => handleEdit(product)}
-                    className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-lg transition-all duration-200 border border-white/10"
+                    className="bg-white/10 hover:bg-white/20 text-white p-1.5 rounded-lg transition-all duration-200 border border-white/10"
                     title="Modifier"
                   >
                     ✏️
                   </button>
                   <button
+                    onClick={() => handleDuplicate(product)}
+                    className="bg-blue-900/20 border border-blue-400/20 hover:bg-blue-900/40 text-blue-400 p-1.5 rounded-lg transition-all duration-200"
+                    title="Dupliquer"
+                  >
+                    📋
+                  </button>
+                  <button
                     onClick={() => product._id && handleDelete(product._id)}
-                    className="bg-red-900/20 border border-red-400/20 hover:bg-red-900/40 text-red-400 p-2 rounded-lg transition-all duration-200"
+                    className="bg-red-900/20 border border-red-400/20 hover:bg-red-900/40 text-red-400 p-1.5 rounded-lg transition-all duration-200"
                     title="Supprimer"
                   >
                     🗑️
@@ -787,7 +1049,7 @@ export default function ProductsManager() {
 
         {/* Version desktop - Grille */}
         <div className="hidden lg:grid grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
-          {products.map((product) => (
+          {filteredProducts.map((product) => (
           <div key={product._id} className="bg-gray-900/50 border border-white/20 rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] backdrop-blur-sm">
             <div className="relative h-32">
               <img
@@ -838,13 +1100,20 @@ export default function ProductsManager() {
               <div className="flex gap-2">
                 <button
                   onClick={() => handleEdit(product)}
-                  className="flex-1 bg-white/10 hover:bg-white/20 text-white font-medium py-2 px-3 rounded-lg text-xs transition-all duration-200 border border-white/10"
+                  className="flex-1 bg-white/10 hover:bg-white/20 text-white font-medium py-2 px-2 rounded-lg text-xs transition-all duration-200 border border-white/10"
                 >
                   ✏️ Modifier
                 </button>
                 <button
+                  onClick={() => handleDuplicate(product)}
+                  className="bg-blue-900/20 border border-blue-400/20 hover:bg-blue-900/40 text-blue-400 font-medium py-2 px-2 rounded-lg text-xs transition-all duration-200"
+                  title="Dupliquer"
+                >
+                  📋
+                </button>
+                <button
                   onClick={() => product._id && handleDelete(product._id)}
-                  className="bg-red-900/20 border border-red-400/20 hover:bg-red-900/40 text-red-400 font-medium py-2 px-3 rounded-lg text-xs transition-all duration-200"
+                  className="bg-red-900/20 border border-red-400/20 hover:bg-red-900/40 text-red-400 font-medium py-2 px-2 rounded-lg text-xs transition-all duration-200"
                 >
                   🗑️
                 </button>
