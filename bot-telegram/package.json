@@ -10,7 +10,11 @@
     "webhook-basic": "node bot-webhook.js",
     "dev": "nodemon bot-webhook-antispam.js",
     "dev-polling": "nodemon bot.js",
-    "test": "node test-local.js"
+    "test": "node test-local.js",
+    "check": "node check-bot-status.js",
+    "check:status": "node check-bot-status.js --check",
+    "webhook:set": "node check-bot-status.js --set-webhook",
+    "webhook:delete": "node check-bot-status.js --delete-webhook"
   },
   "dependencies": {
     "node-telegram-bot-api": "^0.64.0",
