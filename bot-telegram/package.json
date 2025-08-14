@@ -4,8 +4,9 @@
   "description": "Bot Telegram avec MongoDB et Anti-Spam pour LANATION",
   "main": "bot-webhook-antispam.js",
   "scripts": {
-    "start": "node bot-render.js",
-    "start:render": "node bot-render.js",
+    "start": "node bot-render-simple.js",
+    "start:render": "node bot-render-simple.js",
+    "start:render-antispam": "node bot-render.js",
     "start:webhook": "node bot-webhook-antispam.js",
     "start:polling": "node bot.js",
     "webhook": "node bot-webhook-antispam.js",

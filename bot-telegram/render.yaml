@@ -5,7 +5,7 @@ services:
     branch: main
     rootDir: bot-telegram
     buildCommand: npm install
-    startCommand: node bot-render.js
+    startCommand: node bot-render-simple.js
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
