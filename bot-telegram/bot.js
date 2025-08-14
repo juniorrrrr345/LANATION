@@ -3,6 +3,7 @@ const TelegramBot = require('node-telegram-bot-api');
 const mongoose = require('mongoose');
 const { loadConfig, saveConfig, getImagePath } = require('./config');
 const { getMainKeyboard, getAdminKeyboard, getSocialManageKeyboard, getSocialLayoutKeyboard, getConfirmKeyboard } = require('./keyboards');
+const AntiSpamSystem = require('./antiSpam');
 
 // Vérifier les variables d'environnement
 if (!process.env.BOT_TOKEN) {
@@ -18,6 +19,26 @@ if (!process.env.ADMIN_ID) {
 // Initialiser le bot
 const bot = new TelegramBot(process.env.BOT_TOKEN, { polling: true });
 const ADMIN_ID = parseInt(process.env.ADMIN_ID);
+
+// Initialiser le système anti-spam
+const antiSpam = new AntiSpamSystem({
+    maxMessagesPerMinute: 30,      // Maximum 30 messages par minute globalement
+    maxMessagesPerHour: 150,       // Maximum 150 messages par heure
+    maxMessagesPerDay: 800,        // Maximum 800 messages par jour
+    userRateLimitMinute: 8,        // Maximum 8 messages par minute par utilisateur
+    userRateLimitHour: 40,          // Maximum 40 messages par heure par utilisateur
+    minCooldown: 800,               // 0.8 seconde minimum entre messages
+    maxCooldown: 2500,              // 2.5 secondes maximum (comportement humain)
+    floodThreshold: 3,              // 3 messages identiques = flood
+    floodBanDuration: 180000,       // 3 minutes de ban pour flood
+    enableHumanBehavior: true,      // Activer le comportement humain
+    typingDelay: 40,                // 40ms par caractère pour simuler la frappe
+    maxTypingDelay: 4000,           // Maximum 4 secondes de frappe
+    debug: false                    // Désactiver les logs debug en production
+});
+
+// Ajouter l'admin à la liste blanche
+antiSpam.addToWhitelist(ADMIN_ID);
 
 // État des utilisateurs (pour gérer les conversations)
 const userStates = {};
@@ -208,6 +229,31 @@ bot.onText(/\/start/, async (msg) => {
     const chatId = msg.chat.id;
     const userId = msg.from.id;
     
+    // Vérifier l'anti-spam pour la commande /start
+    const spamCheck = await antiSpam.canSendMessage(userId, '/start');
+    if (!spamCheck.allowed) {
+        try {
+            const warningMsg = await bot.sendMessage(
+                chatId,
+                `⚠️ ${spamCheck.reason}`,
+                { parse_mode: 'HTML' }
+            );
+            // Supprimer l'avertissement après 5 secondes
+            setTimeout(async () => {
+                try {
+                    await bot.deleteMessage(chatId, warningMsg.message_id);
+                } catch (error) {}
+            }, 5000);
+        } catch (error) {}
+        
+        // Supprimer le message de commande
+        try {
+            await bot.deleteMessage(chatId, msg.message_id);
+        } catch (error) {}
+        
+        return;
+    }
+    
     // Ajouter l'utilisateur à la liste
     await saveUser(userId, msg.from);
     
@@ -269,12 +315,104 @@ bot.onText(/\/admin/, async (msg) => {
     });
 });
 
+// Commande /whitelist pour ajouter un utilisateur à la liste blanche
+bot.onText(/\/whitelist(?:\s+(\d+))?/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    const targetUserId = match[1] ? parseInt(match[1]) : null;
+
+    // Supprimer le message de commande
+    try {
+        await bot.deleteMessage(chatId, msg.message_id);
+    } catch (error) {}
+
+    if (!admins.has(userId)) {
+        await sendNewMessage(chatId, '❌ Vous n\'êtes pas autorisé à utiliser cette commande.');
+        return;
+    }
+
+    if (!targetUserId) {
+        await sendNewMessage(chatId, '❌ Usage: /whitelist <user_id>\n\nExemple: /whitelist 123456789');
+        return;
+    }
+
+    antiSpam.addToWhitelist(targetUserId);
+    await sendNewMessage(chatId, `✅ L'utilisateur ${targetUserId} a été ajouté à la liste blanche.\n\nCet utilisateur ne sera plus soumis aux restrictions anti-spam.`);
+});
+
+// Commande /blacklist pour ajouter un utilisateur à la liste noire
+bot.onText(/\/blacklist(?:\s+(\d+))?/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    const targetUserId = match[1] ? parseInt(match[1]) : null;
+
+    // Supprimer le message de commande
+    try {
+        await bot.deleteMessage(chatId, msg.message_id);
+    } catch (error) {}
+
+    if (!admins.has(userId)) {
+        await sendNewMessage(chatId, '❌ Vous n\'êtes pas autorisé à utiliser cette commande.');
+        return;
+    }
+
+    if (!targetUserId) {
+        await sendNewMessage(chatId, '❌ Usage: /blacklist <user_id>\n\nExemple: /blacklist 123456789');
+        return;
+    }
+
+    if (targetUserId === ADMIN_ID) {
+        await sendNewMessage(chatId, '❌ Impossible de bannir l\'administrateur principal!');
+        return;
+    }
+
+    antiSpam.addToBlacklist(targetUserId);
+    await sendNewMessage(chatId, `🚫 L'utilisateur ${targetUserId} a été ajouté à la liste noire.\n\nCet utilisateur ne pourra plus utiliser le bot.`);
+});
+
+// Commande /unban pour retirer un utilisateur de la liste noire
+bot.onText(/\/unban(?:\s+(\d+))?/, async (msg, match) => {
+    const chatId = msg.chat.id;
+    const userId = msg.from.id;
+    const targetUserId = match[1] ? parseInt(match[1]) : null;
+
+    // Supprimer le message de commande
+    try {
+        await bot.deleteMessage(chatId, msg.message_id);
+    } catch (error) {}
+
+    if (!admins.has(userId)) {
+        await sendNewMessage(chatId, '❌ Vous n\'êtes pas autorisé à utiliser cette commande.');
+        return;
+    }
+
+    if (!targetUserId) {
+        await sendNewMessage(chatId, '❌ Usage: /unban <user_id>\n\nExemple: /unban 123456789');
+        return;
+    }
+
+    antiSpam.removeFromBlacklist(targetUserId);
+    antiSpam.resetUser(targetUserId);
+    await sendNewMessage(chatId, `✅ L'utilisateur ${targetUserId} a été retiré de la liste noire et ses données anti-spam ont été réinitialisées.`);
+});
+
 // Gestion des callbacks
 bot.on('callback_query', async (callbackQuery) => {
     const chatId = callbackQuery.message.chat.id;
     const messageId = callbackQuery.message.message_id;
     const userId = callbackQuery.from.id;
     const data = callbackQuery.data;
+
+    // Vérifier l'anti-spam pour les callbacks (protection contre les clics rapides)
+    const spamCheck = await antiSpam.canSendMessage(userId, `callback:${data}`);
+    if (!spamCheck.allowed) {
+        // Afficher une alerte à l'utilisateur
+        await bot.answerCallbackQuery(callbackQuery.id, {
+            text: '⚠️ Trop de clics rapides. Veuillez patienter.',
+            show_alert: true
+        });
+        return;
+    }
 
     // Répondre au callback pour éviter le spinner
     await bot.answerCallbackQuery(callbackQuery.id);
@@ -527,12 +665,23 @@ bot.on('callback_query', async (callbackQuery) => {
                 const uptimeHours = Math.floor((uptime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                 const uptimeMinutes = Math.floor((uptime % (1000 * 60 * 60)) / (1000 * 60));
                 
+                // Obtenir les statistiques anti-spam
+                const spamStats = antiSpam.getStats();
+                
                 // Créer le message de statistiques
                 const statsMessage = `📊 **Statistiques du Bot**\n\n` +
                     `👥 **Utilisateurs**\n` +
                     `├─ Total: ${totalUsers}\n` +
                     `├─ Utilisateurs réguliers: ${regularUsers}\n` +
                     `└─ Administrateurs: ${totalAdmins}\n\n` +
+                    `🛡️ **Système Anti-Spam**\n` +
+                    `├─ Messages (minute): ${spamStats.globalMessages.minute}/${spamStats.limits.perMinute}\n` +
+                    `├─ Messages (heure): ${spamStats.globalMessages.hour}/${spamStats.limits.perHour}\n` +
+                    `├─ Messages (jour): ${spamStats.globalMessages.day}/${spamStats.limits.perDay}\n` +
+                    `├─ Utilisateurs actifs: ${spamStats.activeUsers}\n` +
+                    `├─ Utilisateurs bannis: ${spamStats.bannedUsers}\n` +
+                    `├─ Liste blanche: ${spamStats.whitelistedUsers}\n` +
+                    `└─ Liste noire: ${spamStats.blacklistedUsers}\n\n` +
                     `⏱️ **Temps de fonctionnement**\n` +
                     `└─ ${uptimeDays}j ${uptimeHours}h ${uptimeMinutes}m\n\n` +
                     `📅 **Dernière actualisation**\n` +
@@ -696,6 +845,39 @@ bot.on('message', async (msg) => {
     const userState = userStates[userId];
 
     if (!userState) return;
+
+    // Vérifier l'anti-spam (sauf pour les admins sur liste blanche)
+    const spamCheck = await antiSpam.canSendMessage(userId, msg.text);
+    if (!spamCheck.allowed) {
+        // Envoyer un message d'avertissement qui s'auto-supprime
+        try {
+            const warningMsg = await bot.sendMessage(
+                chatId,
+                `⚠️ ${spamCheck.reason}`,
+                { parse_mode: 'HTML' }
+            );
+            // Supprimer l'avertissement après 5 secondes
+            setTimeout(async () => {
+                try {
+                    await bot.deleteMessage(chatId, warningMsg.message_id);
+                } catch (error) {}
+            }, 5000);
+        } catch (error) {}
+        
+        // Supprimer le message de spam
+        try {
+            await bot.deleteMessage(chatId, msg.message_id);
+        } catch (error) {}
+        
+        return; // Ne pas traiter le message
+    }
+
+    // Simuler le comportement humain (délai de frappe)
+    const typingDelay = antiSpam.getTypingDelay(msg.text);
+    if (typingDelay > 0) {
+        await bot.sendChatAction(chatId, 'typing');
+        await new Promise(resolve => setTimeout(resolve, typingDelay));
+    }
 
     // Supprimer le message de l'utilisateur pour garder le chat propre
     try {
